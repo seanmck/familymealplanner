@@ -14,13 +14,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat } from 'lucide-react'
+import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun } from 'lucide-react'
+import { formatDateString } from '@/lib/utils/dates'
 
 const navItems = [
   { href: '/planner', label: 'Planner', icon: Calendar },
   { href: '/recipes', label: 'Recipes', icon: BookOpen },
   { href: '/groceries', label: 'Groceries', icon: ShoppingCart },
 ]
+
+// Today's date formatted for the URL
+function getTodayHref() {
+  return `/planner/day/${formatDateString(new Date())}`
+}
 
 export function Navigation() {
   const pathname = usePathname()
@@ -77,6 +83,28 @@ export function Navigation() {
                 </Link>
               )
             })}
+            {/* Today - special nav item with dynamic href */}
+            {(() => {
+              const todayHref = getTodayHref()
+              const isActive = pathname === todayHref
+              return (
+                <Link
+                  href={todayHref}
+                  className={cn(
+                    'relative flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-200',
+                    isActive
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                  )}
+                >
+                  <Sun className={cn(
+                    'h-4 w-4 transition-colors',
+                    isActive ? 'text-primary' : ''
+                  )} />
+                  Today
+                </Link>
+              )
+            })()}
           </div>
         </nav>
 
@@ -101,6 +129,24 @@ export function Navigation() {
               </Link>
             )
           })}
+          {/* Today - mobile */}
+          {(() => {
+            const todayHref = getTodayHref()
+            const isActive = pathname === todayHref
+            return (
+              <Link
+                href={todayHref}
+                className={cn(
+                  'flex items-center justify-center rounded-lg p-2.5 transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <Sun className="h-5 w-5" />
+              </Link>
+            )
+          })()}
         </nav>
 
         {/* User Menu */}

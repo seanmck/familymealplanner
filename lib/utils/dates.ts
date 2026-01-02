@@ -38,3 +38,58 @@ export const DAYS_OF_WEEK = [
   'Saturday',
   'Sunday',
 ]
+
+/**
+ * Format date as YYYY-MM-DD for use in URLs
+ */
+export function formatDateString(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * Parse YYYY-MM-DD string to Date at midnight local time
+ */
+export function parseDateString(dateStr: string): Date | null {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return null
+  const [, year, month, day] = match
+  const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
+  // Verify the date is valid (handles cases like 2024-02-30)
+  if (date.getFullYear() !== parseInt(year) ||
+      date.getMonth() !== parseInt(month) - 1 ||
+      date.getDate() !== parseInt(day)) {
+    return null
+  }
+  return date
+}
+
+/**
+ * Get day of week as 0-6 (Monday=0, Sunday=6) to match DAYS_OF_WEEK array
+ */
+export function getDayOfWeek(date: Date): number {
+  const day = date.getDay()
+  return day === 0 ? 6 : day - 1
+}
+
+/**
+ * Add (or subtract) days from a date
+ */
+export function addDays(date: Date, days: number): Date {
+  const d = new Date(date)
+  d.setDate(d.getDate() + days)
+  return d
+}
+
+/**
+ * Format date for display: "Wednesday, January 15"
+ */
+export function formatDayDisplay(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+}

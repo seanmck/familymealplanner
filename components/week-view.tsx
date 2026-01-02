@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
 import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
-import { getMonday, formatWeekRange, addWeeks, DAYS_OF_WEEK } from '@/lib/utils/dates'
+import { getMonday, formatWeekRange, addWeeks, formatDateString, DAYS_OF_WEEK } from '@/lib/utils/dates'
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package } from 'lucide-react'
 import {
   Dialog,
@@ -387,25 +387,27 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                       }
                     `}
                   >
-                    <CardHeader className="pb-2 pt-3 px-3">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {day}
-                        </span>
-                        <Badge
-                          variant={isToday ? 'default' : 'outline'}
-                          className={`
-                            h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
-                            ${isToday
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-transparent border-border/60'
-                            }
-                          `}
-                        >
-                          {dayDate.getDate()}
-                        </Badge>
-                      </div>
-                    </CardHeader>
+                    <Link href={`/planner/day/${formatDateString(dayDate)}`}>
+                      <CardHeader className="pb-2 pt-3 px-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {day}
+                          </span>
+                          <Badge
+                            variant={isToday ? 'default' : 'outline'}
+                            className={`
+                              h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
+                              ${isToday
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-transparent border-border/60'
+                              }
+                            `}
+                          >
+                            {dayDate.getDate()}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                    </Link>
                     <CardContent className="space-y-3 px-3 pb-3">
                       <MealSlot
                         label="Dinner"
@@ -469,25 +471,27 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                       }
                     `}
                   >
-                    <CardHeader className="pb-2 pt-3 px-3">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
-                          {day}
-                        </span>
-                        <Badge
-                          variant={isToday ? 'default' : 'outline'}
-                          className={`
-                            h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
-                            ${isToday
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-transparent border-border/60'
-                            }
-                          `}
-                        >
-                          {dayDate.getDate()}
-                        </Badge>
-                      </div>
-                    </CardHeader>
+                    <Link href={`/planner/day/${formatDateString(dayDate)}`}>
+                      <CardHeader className="pb-2 pt-3 px-3 cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
+                            {day}
+                          </span>
+                          <Badge
+                            variant={isToday ? 'default' : 'outline'}
+                            className={`
+                              h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
+                              ${isToday
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-transparent border-border/60'
+                              }
+                            `}
+                          >
+                            {dayDate.getDate()}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                    </Link>
                     <CardContent className="space-y-3 px-3 pb-3">
                       <MealSlot
                         label="Dinner"
