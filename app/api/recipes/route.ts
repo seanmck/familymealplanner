@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getAuth } from '@/lib/api-auth'
 import { RecipeType } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
     const recipes = await db.recipe.findMany({
       where: {
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
         ...(search && {
           OR: [
             { title: { contains: search, mode: 'insensitive' } },
@@ -49,8 +49,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
         sourceUrl,
         tags: tags || [],
         type: type as RecipeType,
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
         ingredients: {
           create: (ingredients || []).map((ing: { name: string; quantity?: number; unit?: string; notes?: string }, index: number) => ({
             name: ing.name,

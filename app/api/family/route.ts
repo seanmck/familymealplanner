@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getAuth } from '@/lib/api-auth'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const members = await db.familyMember.findMany({
-      where: { householdId: session.user.householdId },
+      where: { householdId: authResult.householdId },
       orderBy: [{ role: 'asc' }, { name: 'asc' }],
     })
 
@@ -26,8 +26,8 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       data: {
         name,
         role: role || 'ADULT',
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
       },
     })
 

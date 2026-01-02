@@ -49,6 +49,25 @@ model Household {
   familyMembers FamilyMember[]
   mealPlans     MealPlan[]
   pantryStaples PantryStaple[]
+  apiTokens     ApiToken[]
+}
+
+// ============================================================================
+// API Tokens (for MCP/CLI access)
+// ============================================================================
+
+model ApiToken {
+  id          String    @id @default(cuid())
+  name        String    // User-friendly name, e.g., "Claude MCP Access"
+  token       String    @unique // Hashed token
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  // Relations
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
 }
 
 // ============================================================================

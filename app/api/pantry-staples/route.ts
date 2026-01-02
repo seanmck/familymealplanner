@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getAuth } from '@/lib/api-auth'
 
 // GET - Fetch all pantry staples for household
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const staples = await db.pantryStaple.findMany({
-      where: { householdId: session.user.householdId },
+      where: { householdId: authResult.householdId },
       orderBy: { name: 'asc' },
     })
 
@@ -28,8 +28,8 @@ export async function GET() {
 // POST - Add a new pantry staple
 export async function POST(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Check if staple already exists
     const existing = await db.pantryStaple.findFirst({
       where: {
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
         name: normalizedName,
       },
     })
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       data: {
         name: normalizedName,
         displayName,
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
       },
     })
 
