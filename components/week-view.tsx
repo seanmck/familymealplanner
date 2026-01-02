@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
 import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
+import { PlannerSuggestions } from '@/components/planner-suggestions'
 import { getMonday, formatWeekRange, addWeeks, formatDateString, DAYS_OF_WEEK } from '@/lib/utils/dates'
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package } from 'lucide-react'
 import {
@@ -530,6 +531,9 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
 
           {/* Weekly Summary */}
           <WeeklySummary mealPlan={mealPlan} />
+
+          {/* Recipe Suggestions */}
+          <PlannerSuggestions />
         </div>
       )}
 

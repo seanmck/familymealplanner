@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -10,6 +10,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { IngredientSearchInput } from '@/components/ingredient-search-input'
+import { SuggestionsSection } from '@/components/suggestions-section'
+import type { SuggestionsResponse } from '@/lib/suggestions/types'
 
 interface Recipe {
   id: string
@@ -30,6 +33,7 @@ interface RecipePickerProps {
   initialPlaceholder?: string
   filterType?: 'MAIN' | 'SIDE' | null
   title?: string
+  showSuggestions?: boolean
 }
 
 // Inner component that resets state when key changes
@@ -39,15 +43,60 @@ function RecipePickerContent({
   initialPlaceholder,
   filterType,
   title,
+  showSuggestions = true,
 }: {
   recipes: Recipe[]
   onSelect: (recipeId: string | null, placeholder?: string) => void
   initialPlaceholder?: string
   filterType?: 'MAIN' | 'SIDE' | null
   title?: string
+  showSuggestions?: boolean
 }) {
   const [search, setSearch] = useState('')
   const [quickAdd, setQuickAdd] = useState(initialPlaceholder || '')
+  const [ingredientSearch, setIngredientSearch] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<SuggestionsResponse | null>(null)
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
+
+  // Fetch suggestions on mount and when ingredient search changes
+  const fetchSuggestions = useCallback(async (ingredients: string[]) => {
+    setIsLoadingSuggestions(true)
+    try {
+      const params = new URLSearchParams()
+      if (ingredients.length > 0) {
+        params.set('ingredients', ingredients.join(','))
+      }
+      params.set('limit', '5')
+
+      const response = await fetch(`/api/recipes/suggestions?${params}`)
+      if (response.ok) {
+        const data: SuggestionsResponse = await response.json()
+        setSuggestions(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch suggestions:', error)
+    } finally {
+      setIsLoadingSuggestions(false)
+    }
+  }, [])
+
+  // Initial fetch on mount
+  useEffect(() => {
+    if (showSuggestions) {
+      fetchSuggestions([])
+    }
+  }, [showSuggestions, fetchSuggestions])
+
+  // Debounced fetch when ingredients change
+  useEffect(() => {
+    if (!showSuggestions) return
+
+    const timer = setTimeout(() => {
+      fetchSuggestions(ingredientSearch)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [ingredientSearch, showSuggestions, fetchSuggestions])
 
   const isEditing = Boolean(initialPlaceholder)
   const isPickingSide = filterType === 'SIDE'
@@ -110,6 +159,25 @@ function RecipePickerContent({
             autoFocus={isPickingSide}
           />
         </div>
+
+        {/* Ingredient search - only show when not searching by title and suggestions enabled */}
+        {showSuggestions && !isPickingSide && !search && (
+          <IngredientSearchInput
+            value={ingredientSearch}
+            onChange={setIngredientSearch}
+            placeholder="Have ingredients? Search by what you have..."
+          />
+        )}
+
+        {/* Suggestions section - only show when not searching by title */}
+        {showSuggestions && !search && suggestions && (
+          <SuggestionsSection
+            favorites={suggestions.favorites}
+            ingredientMatches={suggestions.ingredientMatches}
+            onSelect={(recipeId) => onSelect(recipeId)}
+            isLoading={isLoadingSuggestions}
+          />
+        )}
       </div>
 
       <div className="flex-1 overflow-auto mt-4">
@@ -196,6 +264,7 @@ export function RecipePicker({
   initialPlaceholder,
   filterType,
   title,
+  showSuggestions = true,
 }: RecipePickerProps) {
   // Use a key based on open state and initialPlaceholder to reset form state when dialog opens
   // This is the React-recommended pattern for resetting state based on props
@@ -203,7 +272,7 @@ export function RecipePicker({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[80vh] flex flex-col">
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
         <RecipePickerContent
           key={contentKey}
           recipes={recipes}
@@ -211,6 +280,7 @@ export function RecipePicker({
           initialPlaceholder={initialPlaceholder}
           filterType={filterType}
           title={title}
+          showSuggestions={showSuggestions}
         />
       </DialogContent>
     </Dialog>
