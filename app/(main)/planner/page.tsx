@@ -22,6 +22,11 @@ export default async function PlannerPage() {
     orderBy: { title: 'asc' },
   })
 
+  const familyMembers = await db.familyMember.findMany({
+    where: { householdId: session.user.householdId },
+    orderBy: [{ role: 'asc' }, { name: 'asc' }],
+  })
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -37,7 +42,7 @@ export default async function PlannerPage() {
         </p>
       </div>
 
-      <WeekView recipes={recipes} />
+      <WeekView recipes={recipes} familyMembers={familyMembers} />
     </div>
   )
 }

@@ -7,8 +7,15 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
+import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
 import { getMonday, formatWeekRange, addWeeks, DAYS_OF_WEEK } from '@/lib/utils/dates'
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import Link from 'next/link'
 
 interface Recipe {
@@ -34,18 +41,26 @@ interface PlannedMeal {
   mealType: 'DINNER' | 'LUNCH'
   placeholderTitle: string | null
   recipes: PlannedMealRecipe[]
+  familyMemberId?: string | null
+  familyMember?: {
+    id: string
+    name: string
+    role: 'ADULT' | 'CHILD'
+  } | null
 }
 
 interface MealPlan {
   id: string
   plannedMeals: PlannedMeal[]
+  lunchboxItems: LunchboxItem[]
 }
 
 interface WeekViewProps {
   recipes: Recipe[]
+  familyMembers: FamilyMember[]
 }
 
-export function WeekView({ recipes }: WeekViewProps) {
+export function WeekView({ recipes, familyMembers }: WeekViewProps) {
   const router = useRouter()
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()))
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
@@ -58,7 +73,18 @@ export function WeekView({ recipes }: WeekViewProps) {
     existingPlaceholder?: string
     mode: 'main' | 'side'
     plannedMealId?: string
+    familyMemberId?: string
   } | null>(null)
+
+  // Lunchbox picker state
+  const [lunchboxPickerOpen, setLunchboxPickerOpen] = useState(false)
+  const [selectedLunchDay, setSelectedLunchDay] = useState<number>(0)
+
+  // Lunch choice dialog state
+  const [lunchChoiceOpen, setLunchChoiceOpen] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined)
+  // Per-member lunch dialog (shows after selecting a member)
+  const [memberLunchOpen, setMemberLunchOpen] = useState(false)
 
   useEffect(() => {
     fetchMealPlan()
@@ -102,7 +128,18 @@ export function WeekView({ recipes }: WeekViewProps) {
     }
   }
 
-  const handleSlotClick = (dayOfWeek: number, mealType: 'DINNER' | 'LUNCH') => {
+  const handleSlotClick = async (dayOfWeek: number, mealType: 'DINNER' | 'LUNCH') => {
+    // For lunch, show choice dialog (recipe vs lunchbox items)
+    if (mealType === 'LUNCH') {
+      // Ensure meal plan exists before opening picker
+      if (!mealPlan?.id) {
+        await createMealPlan()
+      }
+      setSelectedLunchDay(dayOfWeek)
+      setLunchChoiceOpen(true)
+      return
+    }
+
     const existingMeal = getMealForSlot(dayOfWeek, mealType)
     // If it's a quick-add meal (no recipe but has placeholder), pass the placeholder for editing
     const existingPlaceholder = existingMeal && existingMeal.recipes.length === 0 && existingMeal.placeholderTitle
@@ -152,6 +189,7 @@ export function WeekView({ recipes }: WeekViewProps) {
           dayOfWeek: selectedSlot.dayOfWeek,
           mealType: selectedSlot.mealType,
           role: selectedSlot.mode === 'side' ? 'SIDE' : 'MAIN',
+          familyMemberId: selectedSlot.familyMemberId || null,
         }),
       })
 
@@ -201,10 +239,67 @@ export function WeekView({ recipes }: WeekViewProps) {
     }
   }
 
+  // Get shared meal for a slot (dinner or shared lunch - no familyMemberId)
   const getMealForSlot = (dayOfWeek: number, mealType: 'DINNER' | 'LUNCH') => {
     return mealPlan?.plannedMeals.find(
-      (m) => m.dayOfWeek === dayOfWeek && m.mealType === mealType
+      (m) => m.dayOfWeek === dayOfWeek && m.mealType === mealType && !m.familyMemberId
     )
+  }
+
+  // Get all per-person lunch meals for a day
+  const getMemberLunchMeals = (dayOfWeek: number) => {
+    return mealPlan?.plannedMeals.filter(
+      (m) => m.dayOfWeek === dayOfWeek && m.mealType === 'LUNCH' && m.familyMemberId
+    ) || []
+  }
+
+  const getLunchboxItemsForDay = (dayOfWeek: number) => {
+    return mealPlan?.lunchboxItems?.filter((item) => item.dayOfWeek === dayOfWeek) || []
+  }
+
+  // Get a specific family member's lunch meal for a day
+  const getMemberLunchMeal = (dayOfWeek: number, memberId: string) => {
+    return mealPlan?.plannedMeals.find(
+      (m) => m.dayOfWeek === dayOfWeek && m.mealType === 'LUNCH' && m.familyMemberId === memberId
+    )
+  }
+
+  // Handle clicking a family member in the lunch dialog
+  const handleMemberClick = (memberId: string) => {
+    setSelectedMemberId(memberId)
+    setLunchChoiceOpen(false)
+    setMemberLunchOpen(true)
+  }
+
+  // Handle adding recipe for a specific member's lunch
+  const handleMemberRecipeChoice = () => {
+    if (!selectedMemberId) return
+    const existingMeal = getMemberLunchMeal(selectedLunchDay, selectedMemberId)
+    const existingPlaceholder = existingMeal && existingMeal.recipes.length === 0 && existingMeal.placeholderTitle
+      ? existingMeal.placeholderTitle
+      : undefined
+    setSelectedSlot({
+      dayOfWeek: selectedLunchDay,
+      mealType: 'LUNCH',
+      existingPlaceholder,
+      mode: 'main',
+      plannedMealId: existingMeal?.id,
+      familyMemberId: selectedMemberId,
+    })
+    setMemberLunchOpen(false)
+    setPickerOpen(true)
+  }
+
+  // Handle adding lunchbox items for a specific member
+  const handleMemberLunchboxChoice = () => {
+    setMemberLunchOpen(false)
+    setLunchboxPickerOpen(true)
+  }
+
+  // Ensure meal plan exists for lunchbox items
+  const ensureMealPlan = async () => {
+    if (mealPlan?.id) return mealPlan.id
+    return await createMealPlan()
   }
 
   const isCurrentWeek = () => {
@@ -331,18 +426,14 @@ export function WeekView({ recipes }: WeekViewProps) {
                       <MealSlot
                         label="Lunch"
                         meal={lunchMeal}
+                        lunchboxItems={getLunchboxItemsForDay(index)}
+                        memberLunchMeals={getMemberLunchMeals(index).map((m) => ({
+                          memberId: m.familyMemberId!,
+                          memberName: m.familyMember?.name || '',
+                          recipeTitle: m.recipes?.find((r) => r.role === 'MAIN')?.recipe.title,
+                          placeholderTitle: m.placeholderTitle,
+                        }))}
                         onClick={() => handleSlotClick(index, 'LUNCH')}
-                        onClear={
-                          lunchMeal
-                            ? () => handleClearSlot(lunchMeal.id)
-                            : undefined
-                        }
-                        onAddSide={() => handleAddSide(index, 'LUNCH')}
-                        onRemoveSide={
-                          lunchMeal
-                            ? (recipeId) => handleRemoveSide(lunchMeal.id, recipeId)
-                            : undefined
-                        }
                       />
                     </CardContent>
                   </Card>
@@ -417,18 +508,14 @@ export function WeekView({ recipes }: WeekViewProps) {
                       <MealSlot
                         label="Lunch"
                         meal={lunchMeal}
+                        lunchboxItems={getLunchboxItemsForDay(index)}
+                        memberLunchMeals={getMemberLunchMeals(index).map((m) => ({
+                          memberId: m.familyMemberId!,
+                          memberName: m.familyMember?.name || '',
+                          recipeTitle: m.recipes?.find((r) => r.role === 'MAIN')?.recipe.title,
+                          placeholderTitle: m.placeholderTitle,
+                        }))}
                         onClick={() => handleSlotClick(index, 'LUNCH')}
-                        onClear={
-                          lunchMeal
-                            ? () => handleClearSlot(lunchMeal.id)
-                            : undefined
-                        }
-                        onAddSide={() => handleAddSide(index, 'LUNCH')}
-                        onRemoveSide={
-                          lunchMeal
-                            ? (recipeId) => handleRemoveSide(lunchMeal.id, recipeId)
-                            : undefined
-                        }
                       />
                     </CardContent>
                   </Card>
@@ -450,6 +537,129 @@ export function WeekView({ recipes }: WeekViewProps) {
         initialPlaceholder={selectedSlot?.existingPlaceholder}
         filterType={selectedSlot?.mode === 'side' ? 'SIDE' : null}
       />
+
+      <LunchboxPicker
+        open={lunchboxPickerOpen}
+        onOpenChange={setLunchboxPickerOpen}
+        dayOfWeek={selectedLunchDay}
+        mealPlanId={mealPlan?.id || ''}
+        familyMembers={familyMembers}
+        existingItems={mealPlan?.lunchboxItems || []}
+        onRefresh={async () => {
+          // Ensure meal plan exists before refreshing
+          if (!mealPlan?.id) {
+            await ensureMealPlan()
+          }
+          fetchMealPlan()
+        }}
+        initialMemberId={selectedMemberId}
+      />
+
+      {/* Lunch: Select Family Member Dialog */}
+      <Dialog open={lunchChoiceOpen} onOpenChange={setLunchChoiceOpen}>
+        <DialogContent className="sm:max-w-[380px]">
+          <DialogHeader>
+            <DialogTitle>{DAYS_OF_WEEK[selectedLunchDay]} Lunch</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Who&apos;s lunch are you planning?</p>
+            {familyMembers.map((member) => {
+              const memberMeal = getMemberLunchMeal(selectedLunchDay, member.id)
+              const memberItems = getLunchboxItemsForDay(selectedLunchDay).filter(
+                item => item.familyMember.id === member.id
+              )
+              const mainRecipe = memberMeal?.recipes?.find(r => r.role === 'MAIN')?.recipe
+              return (
+                <Button
+                  key={member.id}
+                  variant="outline"
+                  className="w-full h-auto py-3 px-3 justify-start gap-3"
+                  onClick={() => handleMemberClick(member.id)}
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-medium">
+                    {member.name.charAt(0)}
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium">{member.name}</p>
+                      {member.role === 'CHILD' && (
+                        <Badge variant="secondary" className="h-4 text-[9px] px-1">
+                          Child
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {mainRecipe?.title || memberMeal?.placeholderTitle
+                        ? `${mainRecipe?.title || memberMeal?.placeholderTitle}${memberItems.length > 0 ? ` + ${memberItems.length} items` : ''}`
+                        : memberItems.length > 0
+                          ? `${memberItems.length} ${memberItems.length === 1 ? 'item' : 'items'}`
+                          : 'Nothing planned yet'}
+                    </p>
+                  </div>
+                </Button>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lunch: Per-Member Options Dialog */}
+      <Dialog open={memberLunchOpen} onOpenChange={setMemberLunchOpen}>
+        <DialogContent className="sm:max-w-[340px]">
+          <DialogHeader>
+            <DialogTitle>
+              {familyMembers.find(m => m.id === selectedMemberId)?.name}&apos;s Lunch
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            {(() => {
+              const memberMeal = selectedMemberId ? getMemberLunchMeal(selectedLunchDay, selectedMemberId) : null
+              const mainRecipe = memberMeal?.recipes?.find(r => r.role === 'MAIN')?.recipe
+              const memberItems = selectedMemberId
+                ? getLunchboxItemsForDay(selectedLunchDay).filter(item => item.familyMember.id === selectedMemberId)
+                : []
+              return (
+                <>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 px-4 justify-start gap-3"
+                    onClick={handleMemberRecipeChoice}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Utensils className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">
+                        {mainRecipe?.title || memberMeal?.placeholderTitle || 'Add Recipe'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {mainRecipe || memberMeal?.placeholderTitle ? 'Change recipe' : 'Pick from your recipes'}
+                      </p>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 px-4 justify-start gap-3"
+                    onClick={handleMemberLunchboxChoice}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/50">
+                      <Package className="h-5 w-5 text-accent-foreground" />
+                    </div>
+                    <div className="text-left">
+                      <p className="font-medium">Lunchbox Items</p>
+                      <p className="text-xs text-muted-foreground">
+                        {memberItems.length > 0
+                          ? `${memberItems.length} ${memberItems.length === 1 ? 'item' : 'items'} packed`
+                          : 'Add snacks, sides, fruit...'}
+                      </p>
+                    </div>
+                  </Button>
+                </>
+              )
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

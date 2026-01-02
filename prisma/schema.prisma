@@ -277,7 +277,7 @@ model PantryStaple {
 model LunchboxItem {
   id        String   @id @default(cuid())
   dayOfWeek Int      // 0 = Monday, 6 = Sunday
-  category  String   // "main", "side", "fruit", "snack", "drink", "treat"
+  category  String?  // Optional: "main", "side", "fruit", "snack", "treat"
   name      String   // "PB&J", "carrots", "apple slices"
   notes     String?  // "cut into triangles", "no crusts"
   sortOrder Int      @default(0)

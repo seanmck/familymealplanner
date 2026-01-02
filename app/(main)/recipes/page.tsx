@@ -3,16 +3,9 @@ import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { RecipeCard } from '@/components/recipe-card'
-import { Plus, Search, BookOpen, ChefHat } from 'lucide-react'
+import { RecipeSearchFilter } from '@/components/recipe-search-filter'
+import { Plus, BookOpen, ChefHat } from 'lucide-react'
 
 interface Props {
   searchParams: Promise<{ search?: string; tag?: string }>
@@ -25,30 +18,41 @@ export default async function RecipesPage({ searchParams }: Props) {
   }
 
   const { search = '', tag = '' } = await searchParams
+  const activeTag = tag && tag !== '__all__' ? tag : ''
 
-  const recipes = await db.recipe.findMany({
-    where: {
-      householdId: session.user.householdId,
-      ...(search && {
-        OR: [
-          { title: { contains: search, mode: 'insensitive' } },
-          { description: { contains: search, mode: 'insensitive' } },
-          { ingredients: { some: { name: { contains: search, mode: 'insensitive' } } } },
-        ],
-      }),
-      ...(tag && { tags: { has: tag } }),
-    },
-    include: {
-      ingredients: true,
-      ratings: {
-        include: { member: true },
+  // Fetch filtered recipes and all tags in parallel
+  const [recipes, allRecipesForTags] = await Promise.all([
+    db.recipe.findMany({
+      where: {
+        householdId: session.user.householdId,
+        ...(search && {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { ingredients: { some: { name: { contains: search, mode: 'insensitive' } } } },
+            { tags: { has: search } },
+            { tags: { has: search.toLowerCase() } },
+          ],
+        }),
+        ...(activeTag && { tags: { has: activeTag } }),
       },
-    },
-    orderBy: { updatedAt: 'desc' },
-  })
+      include: {
+        ingredients: true,
+        ratings: {
+          include: { member: true },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+    }),
+    // Get all recipes (unfiltered) to extract all available tags
+    db.recipe.findMany({
+      where: { householdId: session.user.householdId },
+      select: { tags: true },
+    }),
+  ])
 
-  // Get all unique tags
-  const allTags = [...new Set(recipes.flatMap((r) => r.tags))].sort()
+  // Get all unique tags from all recipes
+  const allTags = [...new Set(allRecipesForTags.flatMap((r) => r.tags))].sort()
 
   return (
     <div className="space-y-8">
@@ -74,35 +78,7 @@ export default async function RecipesPage({ searchParams }: Props) {
       </div>
 
       {/* Search & Filter */}
-      <form className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            name="search"
-            placeholder="Search recipes..."
-            defaultValue={search}
-            className="pl-10 h-11 bg-background border-border/60"
-          />
-        </div>
-        {allTags.length > 0 && (
-          <Select name="tag" defaultValue={tag}>
-            <SelectTrigger className="w-full sm:w-[180px] h-11 bg-background border-border/60">
-              <SelectValue placeholder="All tags" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value=" ">All tags</SelectItem>
-              {allTags.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Button type="submit" variant="secondary" className="h-11">
-          Search
-        </Button>
-      </form>
+      <RecipeSearchFilter allTags={allTags} />
 
       {/* Content */}
       {recipes.length === 0 ? (
@@ -111,14 +87,14 @@ export default async function RecipesPage({ searchParams }: Props) {
             <ChefHat className="h-10 w-10 text-muted-foreground" />
           </div>
           <h2 className="text-xl font-semibold text-center mb-2">
-            {search || tag ? 'No recipes found' : 'Your recipe library is empty'}
+            {search || activeTag ? 'No recipes found' : 'Your recipe library is empty'}
           </h2>
           <p className="text-muted-foreground text-center max-w-sm mb-6">
-            {search || tag
+            {search || activeTag
               ? 'Try adjusting your search or filters to find what you\'re looking for.'
               : 'Start building your collection by adding your family\'s favorite recipes.'}
           </p>
-          {!search && !tag && (
+          {!search && !activeTag && (
             <Link href="/recipes/new">
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />

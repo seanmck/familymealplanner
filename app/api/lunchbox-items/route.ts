@@ -12,9 +12,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { mealPlanId, familyMemberId, dayOfWeek, category, name, notes, sortOrder } = body
 
-    if (!mealPlanId || !familyMemberId || dayOfWeek === undefined || !category || !name) {
+    if (!mealPlanId || !familyMemberId || dayOfWeek === undefined || !name) {
       return NextResponse.json(
-        { error: 'mealPlanId, familyMemberId, dayOfWeek, category, and name are required' },
+        { error: 'mealPlanId, familyMemberId, dayOfWeek, and name are required' },
         { status: 400 }
       )
     }
