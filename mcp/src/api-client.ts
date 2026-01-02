@@ -294,6 +294,28 @@ export class ApiClient {
     return this.request(`/api/mcp/recent-meal-plans?weeks=${weeks}`)
   }
 
+  async createOrGetMealPlan(weekStartDate: string): Promise<MealPlan> {
+    return this.request('/api/meal-plans', {
+      method: 'POST',
+      body: JSON.stringify({ weekStartDate }),
+    })
+  }
+
+  async addPlannedMeal(params: {
+    mealPlanId: string
+    recipeId?: string
+    placeholderTitle?: string
+    dayOfWeek: number
+    mealType: 'DINNER' | 'LUNCH'
+    notes?: string
+    role?: 'MAIN' | 'SIDE'
+  }): Promise<PlannedMeal> {
+    return this.request('/api/planned-meals', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    })
+  }
+
   // Grocery methods
   async getGroceryList(mealPlanId: string): Promise<GroceryList | null> {
     return this.request(`/api/grocery-lists?mealPlanId=${encodeURIComponent(mealPlanId)}`)

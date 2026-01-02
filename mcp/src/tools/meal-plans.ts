@@ -42,6 +42,51 @@ export const mealPlanTools: Tool[] = [
       },
     },
   },
+  {
+    name: 'add_planned_meal',
+    description:
+      'Add a meal to the meal plan for a specific day. Can add a recipe by ID or a placeholder for takeout/leftovers.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        weekStart: {
+          type: 'string',
+          description:
+            'The Monday of the week, in YYYY-MM-DD format (e.g., "2024-01-15")',
+        },
+        dayOfWeek: {
+          type: 'number',
+          description:
+            'Day of the week (0 = Monday, 1 = Tuesday, ..., 6 = Sunday)',
+        },
+        mealType: {
+          type: 'string',
+          enum: ['DINNER', 'LUNCH'],
+          description: 'Type of meal (default: DINNER)',
+        },
+        recipeId: {
+          type: 'string',
+          description:
+            'ID of the recipe to add. Either recipeId or placeholderTitle is required.',
+        },
+        placeholderTitle: {
+          type: 'string',
+          description:
+            'Title for a placeholder meal (e.g., "Takeout", "Leftovers"). Use when not adding a specific recipe.',
+        },
+        notes: {
+          type: 'string',
+          description: 'Optional notes for the meal',
+        },
+        role: {
+          type: 'string',
+          enum: ['MAIN', 'SIDE'],
+          description: 'Role of the recipe in the meal (default: MAIN)',
+        },
+      },
+      required: ['weekStart', 'dayOfWeek'],
+    },
+  },
 ]
 
 export async function handleMealPlanTool(
@@ -148,6 +193,67 @@ export async function handleMealPlanTool(
           totalPlannedMeals: recentMeals.length,
           frequentlyMade: frequentRecipes,
           recentMeals: recentMeals.slice(0, 20), // Last 20 meals
+        },
+        null,
+        2
+      )
+    }
+
+    case 'add_planned_meal': {
+      const weekStart = args.weekStart as string
+      const dayOfWeek = args.dayOfWeek as number
+      const mealType = (args.mealType as 'DINNER' | 'LUNCH') || 'DINNER'
+      const recipeId = args.recipeId as string | undefined
+      const placeholderTitle = args.placeholderTitle as string | undefined
+      const notes = args.notes as string | undefined
+      const role = (args.role as 'MAIN' | 'SIDE') || 'MAIN'
+
+      if (!weekStart) {
+        throw new Error('weekStart is required (format: YYYY-MM-DD)')
+      }
+
+      if (dayOfWeek === undefined || dayOfWeek < 0 || dayOfWeek > 6) {
+        throw new Error('dayOfWeek is required (0 = Monday, 6 = Sunday)')
+      }
+
+      if (!recipeId && !placeholderTitle) {
+        throw new Error('Either recipeId or placeholderTitle is required')
+      }
+
+      // Create or get the meal plan for this week
+      const mealPlan = await api.createOrGetMealPlan(weekStart)
+
+      // Add the planned meal
+      const plannedMeal = await api.addPlannedMeal({
+        mealPlanId: mealPlan.id,
+        dayOfWeek,
+        mealType,
+        recipeId,
+        placeholderTitle,
+        notes,
+        role,
+      })
+
+      const dayName = DAY_NAMES[dayOfWeek] || `Day ${dayOfWeek}`
+      const mealName = recipeId
+        ? plannedMeal.recipes?.[0]?.recipe?.title || 'Recipe'
+        : placeholderTitle
+
+      return JSON.stringify(
+        {
+          message: `Added "${mealName}" to ${dayName} ${mealType.toLowerCase()}`,
+          plannedMeal: {
+            id: plannedMeal.id,
+            dayOfWeek,
+            dayName,
+            mealType,
+            recipes: plannedMeal.recipes?.map((r) => ({
+              title: r.recipe.title,
+              role: r.role,
+            })),
+            placeholder: plannedMeal.placeholderTitle,
+            notes: plannedMeal.notes,
+          },
         },
         null,
         2

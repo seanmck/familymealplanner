@@ -218,6 +218,7 @@ export async function handleRecipeTool(
             ingredientCount: parsed.ingredients.length,
             tags: parsed.tags,
             sourceUrl: parsed.sourceUrl,
+            imageUrl: parsed.imageUrl,
           },
           fullRecipe: parsed,
         },
