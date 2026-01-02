@@ -55,29 +55,36 @@ model Household {
 // Recipe Management
 // ============================================================================
 
+enum RecipeType {
+  MAIN
+  SIDE
+}
+
 model Recipe {
-  id              String   @id @default(cuid())
+  id              String     @id @default(cuid())
   title           String
   description     String?
   prepTimeMinutes Int?
   cookTimeMinutes Int?
-  servings        Int      @default(4)
-  instructions    String   @db.Text
+  servings        Int        @default(4)
+  instructions    String     @db.Text
   imageUrl        String?
-  sourceUrl       String?   // Original URL if imported from external site
-  tags            String[] @default([])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  sourceUrl       String?    // Original URL if imported from external site
+  tags            String[]   @default([])
+  type            RecipeType @default(MAIN)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
   // Relations
-  householdId  String
-  household    Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  ingredients  Ingredient[]
-  ratings      RecipeRating[]
-  plannedMeals PlannedMeal[]
+  householdId        String
+  household          Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredients        Ingredient[]
+  ratings            RecipeRating[]
+  plannedMealRecipes PlannedMealRecipe[]
 
   @@index([householdId])
   @@index([title])
+  @@index([type])
 }
 
 model Ingredient {
@@ -185,16 +192,31 @@ model PlannedMeal {
 
   // Relations
   mealPlanId     String
-  mealPlan       MealPlan      @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
-  recipeId       String?
-  recipe         Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
-  familyMemberId String?       // NULL = shared meal for whole family, set = personal meal
-  familyMember   FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+  mealPlan       MealPlan            @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipes        PlannedMealRecipe[]
+  familyMemberId String?             // NULL = shared meal for whole family, set = personal meal
+  familyMember   FamilyMember?       @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
 
   @@unique([mealPlanId, dayOfWeek, mealType, familyMemberId])
   @@index([mealPlanId])
-  @@index([recipeId])
   @@index([familyMemberId])
+}
+
+model PlannedMealRecipe {
+  id            String     @id @default(cuid())
+  role          RecipeType // MAIN or SIDE - allows overriding recipe.type for this meal
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now())
+
+  // Relations
+  plannedMealId String
+  plannedMeal   PlannedMeal @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
+  recipeId      String
+  recipe        Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([plannedMealId, recipeId])
+  @@index([plannedMealId])
+  @@index([recipeId])
 }
 
 // ============================================================================

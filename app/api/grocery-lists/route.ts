@@ -80,9 +80,13 @@ export async function POST(request: Request) {
       include: {
         plannedMeals: {
           include: {
-            recipe: {
+            recipes: {
               include: {
-                ingredients: true,
+                recipe: {
+                  include: {
+                    ingredients: true,
+                  },
+                },
               },
             },
           },
@@ -105,35 +109,37 @@ export async function POST(request: Request) {
       pantryStaples.map((s) => s.name.toLowerCase().trim())
     )
 
-    // Aggregate ingredients
+    // Aggregate ingredients from all recipes (mains and sides)
     const ingredientMap = new Map<
       string,
       { name: string; quantity: number; unit: string; category: string }
     >()
 
     for (const meal of mealPlan.plannedMeals) {
-      if (!meal.recipe) continue
+      for (const plannedRecipe of meal.recipes) {
+        const recipe = plannedRecipe.recipe
 
-      for (const ingredient of meal.recipe.ingredients) {
-        // Skip pantry staples
-        if (stapleNames.has(ingredient.name.toLowerCase().trim())) {
-          continue
-        }
+        for (const ingredient of recipe.ingredients) {
+          // Skip pantry staples
+          if (stapleNames.has(ingredient.name.toLowerCase().trim())) {
+            continue
+          }
 
-        const unitStr = ingredient.unit?.toLowerCase().trim() || ''
-        const key = `${ingredient.name.toLowerCase().trim()}-${unitStr}`
-        const existing = ingredientMap.get(key)
-        const qty = ingredient.quantity ? Number(ingredient.quantity) : 1
+          const unitStr = ingredient.unit?.toLowerCase().trim() || ''
+          const key = `${ingredient.name.toLowerCase().trim()}-${unitStr}`
+          const existing = ingredientMap.get(key)
+          const qty = ingredient.quantity ? Number(ingredient.quantity) : 1
 
-        if (existing) {
-          existing.quantity += qty
-        } else {
-          ingredientMap.set(key, {
-            name: ingredient.name,
-            quantity: qty,
-            unit: ingredient.unit || '',
-            category: categorizeIngredient(ingredient.name),
-          })
+          if (existing) {
+            existing.quantity += qty
+          } else {
+            ingredientMap.set(key, {
+              name: ingredient.name,
+              quantity: qty,
+              unit: ingredient.unit || '',
+              category: categorizeIngredient(ingredient.name),
+            })
+          }
         }
       }
     }

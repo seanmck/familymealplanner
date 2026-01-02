@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Link2, Loader2, ExternalLink } from 'lucide-react'
 
@@ -28,13 +35,15 @@ interface RecipeFormProps {
     servings: number
     instructions: string
     tags: string[]
+    type?: 'MAIN' | 'SIDE'
     imageUrl?: string | null
     sourceUrl?: string | null
     ingredients: Ingredient[]
   }
+  defaultType?: 'MAIN' | 'SIDE'
 }
 
-export function RecipeForm({ recipe }: RecipeFormProps) {
+export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
   const router = useRouter()
   const isEditing = !!recipe
 
@@ -45,6 +54,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
   const [servings, setServings] = useState(recipe?.servings?.toString() || '4')
   const [instructions, setInstructions] = useState(recipe?.instructions || '')
   const [tags, setTags] = useState(recipe?.tags?.join(', ') || '')
+  const [recipeType, setRecipeType] = useState<'MAIN' | 'SIDE'>(recipe?.type || defaultType)
   const [ingredients, setIngredients] = useState<Ingredient[]>(
     recipe?.ingredients || [{ name: '', quantity: null, unit: '', notes: '' }]
   )
@@ -132,6 +142,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
       instructions,
       imageUrl: imageUrl || null,
       sourceUrl: sourceUrl || null,
+      type: recipeType,
       tags: tags
         .split(',')
         .map((t) => t.trim())
@@ -140,7 +151,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
         .filter((ing) => ing.name.trim())
         .map((ing) => ({
           name: ing.name.trim(),
-          quantity: ing.quantity || null,
+          quantity: ing.quantity || 1,
           unit: ing.unit?.trim() || null,
           notes: ing.notes?.trim() || null,
         })),
@@ -269,15 +280,29 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
           <CardTitle>Recipe Details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title *</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Chicken Tacos"
-              required
-            />
+          <div className="grid grid-cols-4 gap-4">
+            <div className="col-span-3 space-y-2">
+              <Label htmlFor="title">Title *</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Chicken Tacos"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="type">Type</Label>
+              <Select value={recipeType} onValueChange={(value: 'MAIN' | 'SIDE') => setRecipeType(value)}>
+                <SelectTrigger id="type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="MAIN">Main</SelectItem>
+                  <SelectItem value="SIDE">Side</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -359,7 +384,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
                       e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
-                  placeholder="2"
+                  placeholder="1"
                 />
               </div>
               <div className="col-span-2">

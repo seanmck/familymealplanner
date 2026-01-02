@@ -8,10 +8,17 @@ interface Recipe {
   id: string
   title: string
   tags: string[]
+  type: 'MAIN' | 'SIDE'
   ratings: Array<{
     rating: 'UP' | 'DOWN' | 'NEUTRAL'
     member: { name: string; role: 'ADULT' | 'CHILD' }
   }>
+}
+
+interface PlannedMealRecipe {
+  id: string
+  role: 'MAIN' | 'SIDE'
+  recipe: Recipe
 }
 
 interface PlannedMeal {
@@ -19,7 +26,7 @@ interface PlannedMeal {
   dayOfWeek: number
   mealType: 'DINNER' | 'LUNCH'
   placeholderTitle: string | null
-  recipe: Recipe | null
+  recipes: PlannedMealRecipe[]
 }
 
 interface MealSlotProps {
@@ -27,15 +34,21 @@ interface MealSlotProps {
   meal?: PlannedMeal | null
   onClick: () => void
   onClear?: () => void
+  onAddSide?: () => void
+  onRemoveSide?: (recipeId: string) => void
 }
 
-export function MealSlot({ label, meal, onClick, onClear }: MealSlotProps) {
-  const hasKidDownVotes = meal?.recipe?.ratings.some(
+export function MealSlot({ label, meal, onClick, onClear, onAddSide, onRemoveSide }: MealSlotProps) {
+  const mainRecipe = meal?.recipes?.find((r) => r.role === 'MAIN')?.recipe
+  const sideRecipes = meal?.recipes?.filter((r) => r.role === 'SIDE') || []
+
+  const hasKidDownVotes = mainRecipe?.ratings.some(
     (r) => r.rating === 'DOWN' && r.member.role === 'CHILD'
   )
-  const isNew = meal?.recipe && meal.recipe.ratings.length === 0
+  const isNew = mainRecipe && mainRecipe.ratings.length === 0
 
   const isDinner = label.toLowerCase() === 'dinner'
+  const hasMainOrPlaceholder = mainRecipe || meal?.placeholderTitle
 
   return (
     <div className="group">
@@ -44,7 +57,7 @@ export function MealSlot({ label, meal, onClick, onClear }: MealSlotProps) {
           <Utensils className="h-3 w-3" />
           {label}
         </span>
-        {onClear && (
+        {onClear && meal && (
           <Button
             variant="ghost"
             size="sm"
@@ -64,18 +77,45 @@ export function MealSlot({ label, meal, onClick, onClear }: MealSlotProps) {
         className={`
           w-full text-left p-3 rounded-xl border-2 border-dashed
           min-h-[52px] transition-all duration-200
-          ${meal
+          ${hasMainOrPlaceholder
             ? 'border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card'
             : 'border-border/40 bg-muted/30 hover:border-primary/50 hover:bg-muted/50'
           }
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
         `}
       >
-        {meal ? (
+        {hasMainOrPlaceholder ? (
           <div className="space-y-1.5">
             <p className={`text-sm font-medium leading-tight ${isDinner ? 'text-foreground' : 'text-muted-foreground'}`}>
-              {meal.recipe?.title || meal.placeholderTitle}
+              {mainRecipe?.title || meal?.placeholderTitle}
             </p>
+
+            {/* Sides display */}
+            {sideRecipes.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {sideRecipes.map((side) => (
+                  <span
+                    key={side.id}
+                    className="inline-flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded"
+                  >
+                    {side.recipe.title}
+                    {onRemoveSide && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onRemoveSide(side.recipe.id)
+                        }}
+                        className="hover:text-destructive ml-0.5"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Badges */}
             <div className="flex flex-wrap gap-1">
               {isNew && (
                 <Badge
@@ -103,6 +143,20 @@ export function MealSlot({ label, meal, onClick, onClear }: MealSlotProps) {
           </span>
         )}
       </button>
+
+      {/* Add side button - only show when there's a main */}
+      {hasMainOrPlaceholder && mainRecipe && onAddSide && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onAddSide()
+          }}
+          className="mt-1 w-full flex items-center justify-center gap-1 text-[10px] text-muted-foreground hover:text-primary py-1 transition-colors"
+        >
+          <Plus className="h-2.5 w-2.5" />
+          Add side
+        </button>
+      )}
     </div>
   )
 }

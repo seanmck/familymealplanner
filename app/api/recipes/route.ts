@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { RecipeType } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
@@ -12,6 +13,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const tag = searchParams.get('tag') || ''
+    const type = searchParams.get('type') as RecipeType | null
 
     const recipes = await db.recipe.findMany({
       where: {
@@ -24,6 +26,7 @@ export async function GET(request: Request) {
           ],
         }),
         ...(tag && { tags: { has: tag } }),
+        ...(type && { type }),
       },
       include: {
         ingredients: true,
@@ -63,6 +66,7 @@ export async function POST(request: Request) {
       sourceUrl,
       tags,
       ingredients,
+      type = 'MAIN',
     } = body
 
     if (!title || !instructions) {
@@ -83,6 +87,7 @@ export async function POST(request: Request) {
         imageUrl,
         sourceUrl,
         tags: tags || [],
+        type: type as RecipeType,
         householdId: session.user.householdId,
         ingredients: {
           create: (ingredients || []).map((ing: { name: string; quantity?: number; unit?: string; notes?: string }, index: number) => ({

@@ -61,6 +61,7 @@ export async function PUT(
       servings,
       instructions,
       tags,
+      type,
       ingredients,
     } = body
 
@@ -94,6 +95,7 @@ export async function PUT(
           servings,
           instructions,
           tags: tags || [],
+          ...(type && { type }),
           ingredients: {
             create: (ingredients || []).map((ing: { name: string; quantity?: number; unit?: string; notes?: string }, index: number) => ({
               name: ing.name,

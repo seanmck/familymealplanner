@@ -1,6 +1,22 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { RecipeType } from '@prisma/client'
+
+// Standard include for returning planned meals with full recipe data
+const plannedMealInclude = {
+  recipes: {
+    include: {
+      recipe: {
+        include: {
+          ratings: { include: { member: true } },
+        },
+      },
+    },
+    orderBy: { sortOrder: 'asc' },
+  },
+  familyMember: true,
+} as const
 
 export async function POST(request: Request) {
   try {
@@ -10,7 +26,16 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { mealPlanId, recipeId, placeholderTitle, dayOfWeek, mealType, notes, familyMemberId } = body
+    const {
+      mealPlanId,
+      recipeId,
+      placeholderTitle,
+      dayOfWeek,
+      mealType,
+      notes,
+      familyMemberId,
+      role = 'MAIN' // Default to MAIN for backward compatibility
+    } = body
 
     if (mealPlanId === undefined || dayOfWeek === undefined || !mealType) {
       return NextResponse.json(
@@ -35,8 +60,9 @@ export async function POST(request: Request) {
     }
 
     // If recipeId provided, verify it belongs to household
+    let recipe = null
     if (recipeId) {
-      const recipe = await db.recipe.findFirst({
+      recipe = await db.recipe.findFirst({
         where: {
           id: recipeId,
           householdId: session.user.householdId,
@@ -68,45 +94,90 @@ export async function POST(request: Request) {
       }
     }
 
-    // Upsert planned meal (replace if exists for this slot + family member)
-    const plannedMeal = await db.plannedMeal.upsert({
+    // Find existing meal for this slot (handle NULL familyMemberId correctly)
+    let plannedMeal = await db.plannedMeal.findFirst({
       where: {
-        mealPlanId_dayOfWeek_mealType_familyMemberId: {
-          mealPlanId,
-          dayOfWeek,
-          mealType,
-          familyMemberId: familyMemberId || null,
-        },
-      },
-      update: {
-        recipeId: recipeId || null,
-        placeholderTitle: placeholderTitle || null,
-        notes: notes || null,
-      },
-      create: {
         mealPlanId,
         dayOfWeek,
         mealType,
-        recipeId: recipeId || null,
-        placeholderTitle: placeholderTitle || null,
-        notes: notes || null,
         familyMemberId: familyMemberId || null,
       },
-      include: {
-        recipe: {
-          include: {
-            ratings: { include: { member: true } },
-          },
-        },
-        familyMember: true,
-      },
+      include: plannedMealInclude,
     })
+
+    if (plannedMeal) {
+      // Update existing meal
+      if (recipeId) {
+        // If setting a MAIN, remove any existing MAIN first
+        if (role === 'MAIN') {
+          await db.plannedMealRecipe.deleteMany({
+            where: {
+              plannedMealId: plannedMeal.id,
+              role: 'MAIN',
+            },
+          })
+        }
+
+        // Add the new recipe (upsert in case it already exists as a different role)
+        await db.plannedMealRecipe.upsert({
+          where: {
+            plannedMealId_recipeId: {
+              plannedMealId: plannedMeal.id,
+              recipeId,
+            },
+          },
+          create: {
+            plannedMealId: plannedMeal.id,
+            recipeId,
+            role: role as RecipeType,
+            sortOrder: role === 'MAIN' ? 0 : 10,
+          },
+          update: {
+            role: role as RecipeType,
+            sortOrder: role === 'MAIN' ? 0 : 10,
+          },
+        })
+      }
+
+      // Update placeholder/notes if provided
+      plannedMeal = await db.plannedMeal.update({
+        where: { id: plannedMeal.id },
+        data: {
+          placeholderTitle: recipeId ? null : (placeholderTitle || null),
+          notes: notes || plannedMeal.notes,
+        },
+        include: plannedMealInclude,
+      })
+    } else {
+      // Create new meal
+      plannedMeal = await db.plannedMeal.create({
+        data: {
+          mealPlanId,
+          dayOfWeek,
+          mealType,
+          placeholderTitle: recipeId ? null : (placeholderTitle || null),
+          notes: notes || null,
+          familyMemberId: familyMemberId || null,
+          ...(recipeId && {
+            recipes: {
+              create: {
+                recipeId,
+                role: role as RecipeType,
+                sortOrder: role === 'MAIN' ? 0 : 10,
+              },
+            },
+          }),
+        },
+        include: plannedMealInclude,
+      })
+    }
 
     return NextResponse.json(plannedMeal)
   } catch (error) {
     console.error('Error saving planned meal:', error)
+    const message = error instanceof Error ? error.message : 'Failed to save planned meal'
     return NextResponse.json(
-      { error: 'Failed to save planned meal' },
+      { error: message },
       { status: 500 }
     )
   }

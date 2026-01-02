@@ -15,10 +15,17 @@ interface Recipe {
   id: string
   title: string
   tags: string[]
+  type: 'MAIN' | 'SIDE'
   ratings: Array<{
     rating: 'UP' | 'DOWN' | 'NEUTRAL'
     member: { name: string; role: 'ADULT' | 'CHILD' }
   }>
+}
+
+interface PlannedMealRecipe {
+  id: string
+  role: 'MAIN' | 'SIDE'
+  recipe: Recipe
 }
 
 interface PlannedMeal {
@@ -26,7 +33,7 @@ interface PlannedMeal {
   dayOfWeek: number
   mealType: 'DINNER' | 'LUNCH'
   placeholderTitle: string | null
-  recipe: Recipe | null
+  recipes: PlannedMealRecipe[]
 }
 
 interface MealPlan {
@@ -44,10 +51,13 @@ export function WeekView({ recipes }: WeekViewProps) {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [selectedSlot, setSelectedSlot] = useState<{
     dayOfWeek: number
     mealType: 'DINNER' | 'LUNCH'
     existingPlaceholder?: string
+    mode: 'main' | 'side'
+    plannedMealId?: string
   } | null>(null)
 
   useEffect(() => {
@@ -60,10 +70,14 @@ export function WeekView({ recipes }: WeekViewProps) {
       const response = await fetch(
         `/api/meal-plans?weekStart=${weekStart.toISOString()}`
       )
+      if (!response.ok) {
+        throw new Error('Failed to fetch meal plan')
+      }
       const data = await response.json()
       setMealPlan(data)
     } catch (error) {
       console.error('Failed to fetch meal plan:', error)
+      setMealPlan(null)
     } finally {
       setIsLoading(false)
     }
@@ -76,6 +90,9 @@ export function WeekView({ recipes }: WeekViewProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weekStartDate: weekStart.toISOString() }),
       })
+      if (!response.ok) {
+        throw new Error('Failed to create meal plan')
+      }
       const data = await response.json()
       setMealPlan(data)
       return data.id
@@ -88,10 +105,29 @@ export function WeekView({ recipes }: WeekViewProps) {
   const handleSlotClick = (dayOfWeek: number, mealType: 'DINNER' | 'LUNCH') => {
     const existingMeal = getMealForSlot(dayOfWeek, mealType)
     // If it's a quick-add meal (no recipe but has placeholder), pass the placeholder for editing
-    const existingPlaceholder = existingMeal && !existingMeal.recipe && existingMeal.placeholderTitle
+    const existingPlaceholder = existingMeal && existingMeal.recipes.length === 0 && existingMeal.placeholderTitle
       ? existingMeal.placeholderTitle
       : undefined
-    setSelectedSlot({ dayOfWeek, mealType, existingPlaceholder })
+    setSelectedSlot({
+      dayOfWeek,
+      mealType,
+      existingPlaceholder,
+      mode: 'main',
+      plannedMealId: existingMeal?.id,
+    })
+    setPickerOpen(true)
+  }
+
+  const handleAddSide = (dayOfWeek: number, mealType: 'DINNER' | 'LUNCH') => {
+    const existingMeal = getMealForSlot(dayOfWeek, mealType)
+    if (!existingMeal) return
+
+    setSelectedSlot({
+      dayOfWeek,
+      mealType,
+      mode: 'side',
+      plannedMealId: existingMeal.id,
+    })
     setPickerOpen(true)
   }
 
@@ -104,8 +140,9 @@ export function WeekView({ recipes }: WeekViewProps) {
       if (!planId) return
     }
 
+    setIsSaving(true)
     try {
-      await fetch('/api/planned-meals', {
+      const response = await fetch('/api/planned-meals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -114,8 +151,14 @@ export function WeekView({ recipes }: WeekViewProps) {
           placeholderTitle: placeholder || null,
           dayOfWeek: selectedSlot.dayOfWeek,
           mealType: selectedSlot.mealType,
+          role: selectedSlot.mode === 'side' ? 'SIDE' : 'MAIN',
         }),
       })
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to save meal')
+      }
 
       setPickerOpen(false)
       setSelectedSlot(null)
@@ -123,6 +166,26 @@ export function WeekView({ recipes }: WeekViewProps) {
       router.refresh()
     } catch (error) {
       console.error('Failed to save meal:', error)
+      alert('Failed to save meal. Please try again.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRemoveSide = async (plannedMealId: string, recipeId: string) => {
+    try {
+      const response = await fetch(`/api/planned-meals/${plannedMealId}/recipes/${recipeId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove side')
+      }
+
+      fetchMealPlan()
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to remove side:', error)
     }
   }
 
@@ -258,6 +321,12 @@ export function WeekView({ recipes }: WeekViewProps) {
                             ? () => handleClearSlot(dinnerMeal.id)
                             : undefined
                         }
+                        onAddSide={() => handleAddSide(index, 'DINNER')}
+                        onRemoveSide={
+                          dinnerMeal
+                            ? (recipeId) => handleRemoveSide(dinnerMeal.id, recipeId)
+                            : undefined
+                        }
                       />
                       <MealSlot
                         label="Lunch"
@@ -266,6 +335,12 @@ export function WeekView({ recipes }: WeekViewProps) {
                         onClear={
                           lunchMeal
                             ? () => handleClearSlot(lunchMeal.id)
+                            : undefined
+                        }
+                        onAddSide={() => handleAddSide(index, 'LUNCH')}
+                        onRemoveSide={
+                          lunchMeal
+                            ? (recipeId) => handleRemoveSide(lunchMeal.id, recipeId)
                             : undefined
                         }
                       />
@@ -332,6 +407,12 @@ export function WeekView({ recipes }: WeekViewProps) {
                             ? () => handleClearSlot(dinnerMeal.id)
                             : undefined
                         }
+                        onAddSide={() => handleAddSide(index, 'DINNER')}
+                        onRemoveSide={
+                          dinnerMeal
+                            ? (recipeId) => handleRemoveSide(dinnerMeal.id, recipeId)
+                            : undefined
+                        }
                       />
                       <MealSlot
                         label="Lunch"
@@ -340,6 +421,12 @@ export function WeekView({ recipes }: WeekViewProps) {
                         onClear={
                           lunchMeal
                             ? () => handleClearSlot(lunchMeal.id)
+                            : undefined
+                        }
+                        onAddSide={() => handleAddSide(index, 'LUNCH')}
+                        onRemoveSide={
+                          lunchMeal
+                            ? (recipeId) => handleRemoveSide(lunchMeal.id, recipeId)
                             : undefined
                         }
                       />
@@ -361,6 +448,7 @@ export function WeekView({ recipes }: WeekViewProps) {
         recipes={recipes}
         onSelect={handleSelectRecipe}
         initialPlaceholder={selectedSlot?.existingPlaceholder}
+        filterType={selectedSlot?.mode === 'side' ? 'SIDE' : null}
       />
     </div>
   )
@@ -371,10 +459,12 @@ function WeeklySummary({ mealPlan }: { mealPlan: MealPlan | null }) {
   const totalSlots = 14 // 7 days × 2 meals
   const plannedCount = meals.length
   const newRecipes = meals.filter(
-    (m) => m.recipe && m.recipe.ratings.length === 0
+    (m) => m.recipes.some((r) => r.role === 'MAIN' && r.recipe.ratings.length === 0)
   ).length
   const kidWarnings = meals.filter((m) =>
-    m.recipe?.ratings.some((r) => r.rating === 'DOWN' && r.member.role === 'CHILD')
+    m.recipes.some((r) =>
+      r.recipe.ratings.some((rating) => rating.rating === 'DOWN' && rating.member.role === 'CHILD')
+    )
   ).length
 
   return (

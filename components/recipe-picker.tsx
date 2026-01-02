@@ -15,6 +15,7 @@ interface Recipe {
   id: string
   title: string
   tags: string[]
+  type: 'MAIN' | 'SIDE'
   ratings: Array<{
     rating: 'UP' | 'DOWN' | 'NEUTRAL'
     member: { name: string; role: 'ADULT' | 'CHILD' }
@@ -27,6 +28,8 @@ interface RecipePickerProps {
   recipes: Recipe[]
   onSelect: (recipeId: string | null, placeholder?: string) => void
   initialPlaceholder?: string
+  filterType?: 'MAIN' | 'SIDE' | null
+  title?: string
 }
 
 // Inner component that resets state when key changes
@@ -34,21 +37,36 @@ function RecipePickerContent({
   recipes,
   onSelect,
   initialPlaceholder,
+  filterType,
+  title,
 }: {
   recipes: Recipe[]
   onSelect: (recipeId: string | null, placeholder?: string) => void
   initialPlaceholder?: string
+  filterType?: 'MAIN' | 'SIDE' | null
+  title?: string
 }) {
   const [search, setSearch] = useState('')
   const [quickAdd, setQuickAdd] = useState(initialPlaceholder || '')
 
   const isEditing = Boolean(initialPlaceholder)
+  const isPickingSide = filterType === 'SIDE'
 
-  const filteredRecipes = recipes.filter(
-    (r) =>
-      r.title.toLowerCase().includes(search.toLowerCase()) ||
-      r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
-  )
+  // Filter by search, then sort (show matching type first when filterType is set)
+  const filteredRecipes = recipes
+    .filter(
+      (r) =>
+        r.title.toLowerCase().includes(search.toLowerCase()) ||
+        r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()))
+    )
+    .sort((a, b) => {
+      // When picking sides, show SIDE types first but allow any recipe
+      if (filterType) {
+        if (a.type === filterType && b.type !== filterType) return -1
+        if (b.type === filterType && a.type !== filterType) return 1
+      }
+      return a.title.localeCompare(b.title)
+    })
 
   const handleQuickAdd = () => {
     if (quickAdd.trim()) {
@@ -57,33 +75,39 @@ function RecipePickerContent({
     }
   }
 
+  const dialogTitle = title || (isEditing ? 'Edit Meal' : isPickingSide ? 'Add Side' : 'Add Meal')
+
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{isEditing ? 'Edit Meal' : 'Add Meal'}</DialogTitle>
+        <DialogTitle>{dialogTitle}</DialogTitle>
       </DialogHeader>
 
       <div className="space-y-4">
-        <div className="flex gap-2">
-          <Input
-            placeholder={isEditing ? 'Edit meal name...' : 'Quick add (no recipe)...'}
-            value={quickAdd}
-            onChange={(e) => setQuickAdd(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleQuickAdd()
-            }}
-            autoFocus={isEditing}
-          />
-          <Button onClick={handleQuickAdd} disabled={!quickAdd.trim()}>
-            {isEditing ? 'Save' : 'Add'}
-          </Button>
-        </div>
+        {/* Quick add - only show for mains, not sides */}
+        {!isPickingSide && (
+          <div className="flex gap-2">
+            <Input
+              placeholder={isEditing ? 'Edit meal name...' : 'Quick add (no recipe)...'}
+              value={quickAdd}
+              onChange={(e) => setQuickAdd(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleQuickAdd()
+              }}
+              autoFocus={isEditing}
+            />
+            <Button onClick={handleQuickAdd} disabled={!quickAdd.trim()}>
+              {isEditing ? 'Save' : 'Add'}
+            </Button>
+          </div>
+        )}
 
         <div className="relative">
           <Input
-            placeholder="Search recipes..."
+            placeholder={isPickingSide ? 'Search sides...' : 'Search recipes...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            autoFocus={isPickingSide}
           />
         </div>
       </div>
@@ -115,19 +139,26 @@ function RecipePickerContent({
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-medium">{recipe.title}</p>
-                      {recipe.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {recipe.tags.slice(0, 3).map((tag) => (
-                            <Badge
-                              key={tag}
-                              variant="outline"
-                              className="text-xs"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {/* Show recipe type badge when not filtering */}
+                        {!filterType && (
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${recipe.type === 'SIDE' ? 'bg-muted' : ''}`}
+                          >
+                            {recipe.type === 'MAIN' ? 'Main' : 'Side'}
+                          </Badge>
+                        )}
+                        {recipe.tags.slice(0, 3).map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                     <div className="flex gap-1 items-center">
                       {isNew && (
@@ -163,10 +194,12 @@ export function RecipePicker({
   recipes,
   onSelect,
   initialPlaceholder,
+  filterType,
+  title,
 }: RecipePickerProps) {
   // Use a key based on open state and initialPlaceholder to reset form state when dialog opens
   // This is the React-recommended pattern for resetting state based on props
-  const contentKey = open ? `open-${initialPlaceholder || 'new'}` : 'closed'
+  const contentKey = open ? `open-${initialPlaceholder || 'new'}-${filterType || 'all'}` : 'closed'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -176,6 +209,8 @@ export function RecipePicker({
           recipes={recipes}
           onSelect={onSelect}
           initialPlaceholder={initialPlaceholder}
+          filterType={filterType}
+          title={title}
         />
       </DialogContent>
     </Dialog>

@@ -27,10 +27,15 @@ export async function GET(request: Request) {
       include: {
         plannedMeals: {
           include: {
-            recipe: {
+            recipes: {
               include: {
-                ratings: { include: { member: true } },
+                recipe: {
+                  include: {
+                    ratings: { include: { member: true } },
+                  },
+                },
               },
+              orderBy: { sortOrder: 'asc' },
             },
             familyMember: true,
           },
@@ -95,10 +100,15 @@ export async function POST(request: Request) {
       include: {
         plannedMeals: {
           include: {
-            recipe: {
+            recipes: {
               include: {
-                ratings: { include: { member: true } },
+                recipe: {
+                  include: {
+                    ratings: { include: { member: true } },
+                  },
+                },
               },
+              orderBy: { sortOrder: 'asc' },
             },
             familyMember: true,
           },
