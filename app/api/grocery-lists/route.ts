@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
+import { getAuth } from '@/lib/api-auth'
 
 // GET - Fetch grocery list for a meal plan
 export async function GET(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const mealPlan = await db.mealPlan.findFirst({
       where: {
         id: mealPlanId,
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
       },
     })
 
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
 // POST - Generate grocery list from meal plan
 export async function POST(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
     const mealPlan = await db.mealPlan.findFirst({
       where: {
         id: mealPlanId,
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
       },
       include: {
         plannedMeals: {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     // Fetch pantry staples to exclude
     const pantryStaples = await db.pantryStaple.findMany({
-      where: { householdId: session.user.householdId },
+      where: { householdId: authResult.householdId },
     })
     const stapleNames = new Set(
       pantryStaples.map((s) => s.name.toLowerCase().trim())
@@ -120,8 +120,12 @@ export async function POST(request: Request) {
         const recipe = plannedRecipe.recipe
 
         for (const ingredient of recipe.ingredients) {
-          // Skip pantry staples
-          if (stapleNames.has(ingredient.name.toLowerCase().trim())) {
+          // Skip pantry staples (using substring matching to handle variants like "extra-virgin olive oil" matching "olive oil")
+          const normalizedName = ingredient.name.toLowerCase().trim()
+          const isStaple = [...stapleNames].some((staple) =>
+            normalizedName.includes(staple)
+          )
+          if (isStaple) {
             continue
           }
 
@@ -184,6 +188,12 @@ export async function POST(request: Request) {
 function categorizeIngredient(name: string): string {
   const nameLower = name.toLowerCase()
 
+  // Check if a keyword matches as a whole word (not substring)
+  const matchesKeyword = (text: string, keyword: string): boolean => {
+    const regex = new RegExp(`\\b${keyword}s?\\b`, 'i')
+    return regex.test(text)
+  }
+
   const categories: Record<string, string[]> = {
     Produce: [
       'lettuce', 'tomato', 'onion', 'garlic', 'pepper', 'carrot', 'celery',
@@ -192,7 +202,7 @@ function categorizeIngredient(name: string): string {
       'cauliflower', 'eggplant', 'leek', 'scallion', 'shallot', 'ginger',
       'lemon', 'lime', 'orange', 'apple', 'banana', 'berry', 'avocado',
       'cilantro', 'parsley', 'basil', 'mint', 'thyme', 'rosemary', 'sage',
-      'dill', 'chive', 'oregano',
+      'dill', 'chive', 'oregano', 'herb',
     ],
     Meat: [
       'chicken', 'beef', 'pork', 'lamb', 'turkey', 'bacon', 'sausage',
@@ -227,7 +237,7 @@ function categorizeIngredient(name: string): string {
   }
 
   for (const [category, keywords] of Object.entries(categories)) {
-    if (keywords.some((keyword) => nameLower.includes(keyword))) {
+    if (keywords.some((keyword) => matchesKeyword(nameLower, keyword))) {
       return category
     }
   }
