@@ -1,0 +1,273 @@
+// Prisma schema for FamilyTable meal planning app
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// Authentication & User Management
+// ============================================================================
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  hashedPassword String
+  name           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  householdId String?
+  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  sessions    Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users         User[]
+  recipes       Recipe[]
+  familyMembers FamilyMember[]
+  mealPlans     MealPlan[]
+  pantryStaples PantryStaple[]
+}
+
+// ============================================================================
+// Recipe Management
+// ============================================================================
+
+model Recipe {
+  id              String   @id @default(cuid())
+  title           String
+  description     String?
+  prepTimeMinutes Int?
+  cookTimeMinutes Int?
+  servings        Int      @default(4)
+  instructions    String   @db.Text
+  imageUrl        String?
+  sourceUrl       String?   // Original URL if imported from external site
+  tags            String[] @default([])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  householdId  String
+  household    Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ingredients  Ingredient[]
+  ratings      RecipeRating[]
+  plannedMeals PlannedMeal[]
+
+  @@index([householdId])
+  @@index([title])
+}
+
+model Ingredient {
+  id        String   @id @default(cuid())
+  name      String
+  quantity  Decimal? @db.Decimal(10, 3)
+  unit      String?
+  notes     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  recipeId     String
+  recipe       Recipe        @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  groceryItems GroceryItem[]
+
+  @@index([recipeId])
+}
+
+// ============================================================================
+// Family Members & Ratings
+// ============================================================================
+
+enum FamilyRole {
+  ADULT
+  CHILD
+}
+
+model FamilyMember {
+  id        String     @id @default(cuid())
+  name      String
+  role      FamilyRole @default(ADULT)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  householdId   String
+  household     Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  ratings       RecipeRating[]
+  plannedMeals  PlannedMeal[]
+  lunchboxItems LunchboxItem[]
+
+  @@index([householdId])
+}
+
+enum Rating {
+  UP
+  DOWN
+  NEUTRAL
+}
+
+model RecipeRating {
+  id        String   @id @default(cuid())
+  rating    Rating
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  recipeId String
+  recipe   Recipe       @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  memberId String
+  member   FamilyMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, memberId])
+  @@index([recipeId])
+  @@index([memberId])
+}
+
+// ============================================================================
+// Meal Planning
+// ============================================================================
+
+model MealPlan {
+  id            String   @id @default(cuid())
+  weekStartDate DateTime @db.Date
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  householdId   String
+  household     Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  plannedMeals  PlannedMeal[]
+  lunchboxItems LunchboxItem[]
+  groceryList   GroceryList?
+
+  @@unique([householdId, weekStartDate])
+  @@index([householdId])
+  @@index([weekStartDate])
+}
+
+enum MealType {
+  DINNER
+  LUNCH
+}
+
+model PlannedMeal {
+  id               String   @id @default(cuid())
+  dayOfWeek        Int // 0 = Monday, 6 = Sunday
+  mealType         MealType
+  placeholderTitle String? // For quick-add without recipe
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  mealPlanId     String
+  mealPlan       MealPlan      @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  recipeId       String?
+  recipe         Recipe?       @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  familyMemberId String?       // NULL = shared meal for whole family, set = personal meal
+  familyMember   FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([mealPlanId, dayOfWeek, mealType, familyMemberId])
+  @@index([mealPlanId])
+  @@index([recipeId])
+  @@index([familyMemberId])
+}
+
+// ============================================================================
+// Grocery Lists
+// ============================================================================
+
+model GroceryList {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  mealPlanId String      @unique
+  mealPlan   MealPlan    @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  items      GroceryItem[]
+}
+
+model GroceryItem {
+  id          String   @id @default(cuid())
+  name        String
+  quantity    Decimal? @db.Decimal(10, 3)
+  unit        String?
+  category    String?
+  isChecked   Boolean  @default(false)
+  isManualAdd Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  groceryListId String
+  groceryList   GroceryList @relation(fields: [groceryListId], references: [id], onDelete: Cascade)
+  ingredientId  String? // Link to source ingredient if from recipe
+  ingredient    Ingredient? @relation(fields: [ingredientId], references: [id], onDelete: SetNull)
+
+  @@index([groceryListId])
+  @@index([category])
+}
+
+model PantryStaple {
+  id             String   @id @default(cuid())
+  name           String // Normalized name (lowercase, trimmed)
+  displayName    String // User-friendly display name
+  createdAt      DateTime @default(now())
+
+  // Relations
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, name])
+  @@index([householdId])
+}
+
+// ============================================================================
+// Lunchbox Planning (Bento-style packed lunches)
+// ============================================================================
+
+model LunchboxItem {
+  id        String   @id @default(cuid())
+  dayOfWeek Int      // 0 = Monday, 6 = Sunday
+  category  String   // "main", "side", "fruit", "snack", "drink", "treat"
+  name      String   // "PB&J", "carrots", "apple slices"
+  notes     String?  // "cut into triangles", "no crusts"
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  mealPlanId     String
+  mealPlan       MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+  familyMemberId String
+  familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@index([mealPlanId, familyMemberId, dayOfWeek])
+  @@index([familyMemberId])
+}
