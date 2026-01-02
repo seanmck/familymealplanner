@@ -11,6 +11,7 @@ interface Recipe {
   cookTimeMinutes: number | null
   servings: number
   instructions: string
+  notes: string | null
   imageUrl: string | null
   sourceUrl: string | null
   tags: string[]
@@ -50,6 +51,7 @@ interface CreateRecipeInput {
   cookTimeMinutes?: number
   servings?: number
   instructions: string
+  notes?: string
   imageUrl?: string
   sourceUrl?: string
   tags?: string[]

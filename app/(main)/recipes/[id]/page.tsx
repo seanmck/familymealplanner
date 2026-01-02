@@ -201,6 +201,17 @@ export default async function RecipeDetailPage({ params }: Props) {
           <div className="whitespace-pre-wrap">{recipe.instructions}</div>
         </CardContent>
       </Card>
+
+      {recipe.notes && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="whitespace-pre-wrap">{recipe.notes}</div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -127,6 +127,10 @@ export const recipeTools: Tool[] = [
           type: 'string',
           description: 'URL of recipe image',
         },
+        notes: {
+          type: 'string',
+          description: 'Additional notes about the recipe (tips, variations, substitutions)',
+        },
       },
       required: ['title', 'instructions'],
     },
@@ -242,6 +246,7 @@ export async function handleRecipeTool(
         type: args.type as 'MAIN' | 'SIDE' | undefined,
         sourceUrl: args.sourceUrl as string | undefined,
         imageUrl: args.imageUrl as string | undefined,
+        notes: args.notes as string | undefined,
       })
 
       return JSON.stringify(

@@ -87,6 +87,7 @@ model Recipe {
   cookTimeMinutes Int?
   servings        Int        @default(4)
   instructions    String     @db.Text
+  notes           String?    @db.Text // User notes (tips, variations, etc.)
   imageUrl        String?
   sourceUrl       String?    // Original URL if imported from external site
   tags            String[]   @default([])

@@ -60,6 +60,7 @@ export async function PUT(
       cookTimeMinutes,
       servings,
       instructions,
+      notes,
       tags,
       type,
       ingredients,
@@ -94,6 +95,7 @@ export async function PUT(
           cookTimeMinutes,
           servings,
           instructions,
+          notes,
           tags: tags || [],
           ...(type && { type }),
           ingredients: {

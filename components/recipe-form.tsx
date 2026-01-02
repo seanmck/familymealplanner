@@ -34,6 +34,7 @@ interface RecipeFormProps {
     cookTimeMinutes?: number | null
     servings: number
     instructions: string
+    notes?: string | null
     tags: string[]
     type?: 'MAIN' | 'SIDE'
     imageUrl?: string | null
@@ -53,6 +54,7 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
   const [cookTime, setCookTime] = useState(recipe?.cookTimeMinutes?.toString() || '')
   const [servings, setServings] = useState(recipe?.servings?.toString() || '4')
   const [instructions, setInstructions] = useState(recipe?.instructions || '')
+  const [notes, setNotes] = useState(recipe?.notes || '')
   const [tags, setTags] = useState(recipe?.tags?.join(', ') || '')
   const [recipeType, setRecipeType] = useState<'MAIN' | 'SIDE'>(recipe?.type || defaultType)
   const [ingredients, setIngredients] = useState<Ingredient[]>(
@@ -140,6 +142,7 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
       cookTimeMinutes: cookTime ? parseInt(cookTime) : null,
       servings: parseInt(servings) || 4,
       instructions,
+      notes: notes || null,
       imageUrl: imageUrl || null,
       sourceUrl: sourceUrl || null,
       type: recipeType,
@@ -439,6 +442,20 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
             placeholder="1. Preheat oven to 375°F...&#10;2. Mix dry ingredients...&#10;3. ..."
             rows={10}
             required
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Notes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Tips, variations, substitutions, or other details..."
+            rows={4}
           />
         </CardContent>
       </Card>
