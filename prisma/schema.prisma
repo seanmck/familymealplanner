@@ -30,6 +30,8 @@ model User {
   sessions                 Session[]
   accounts                 Account[]
   googleCalendarConnection GoogleCalendarSettings? @relation("CalendarConnectedUser")
+  invitationsSent          Invitation[]            @relation("InvitedByUser")
+  familyMember             FamilyMember?
 }
 
 model Session {
@@ -75,6 +77,7 @@ model Household {
   mealPlans              MealPlan[]
   pantryStaples          PantryStaple[]
   apiTokens              ApiToken[]
+  invitations            Invitation[]
   googleCalendarSettings GoogleCalendarSettings?
 }
 
@@ -94,6 +97,38 @@ model ApiToken {
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
+}
+
+// ============================================================================
+// Invitations (for inviting new users to join a household)
+// ============================================================================
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
+model Invitation {
+  id          String           @id @default(cuid())
+  email       String           // Email of the invitee
+  token       String           @unique // Hashed token for security
+  status      InvitationStatus @default(PENDING)
+  role        FamilyRole       @default(ADULT) // Pre-set role for FamilyMember
+  inviterName String?          // Display name of who invited them
+  expiresAt   DateTime         // Token expiration (7 days from creation)
+  createdAt   DateTime         @default(now())
+  acceptedAt  DateTime?        // When the invite was accepted
+
+  // Relations
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  invitedById String
+  invitedBy   User      @relation("InvitedByUser", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([householdId])
+  @@index([email])
 }
 
 // ============================================================================
@@ -195,6 +230,10 @@ model FamilyMember {
   ratings       RecipeRating[]
   plannedMeals  PlannedMeal[]
   lunchboxItems LunchboxItem[]
+
+  // Optional link to User account (for household members who have logged in via invite)
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([householdId])
 }
