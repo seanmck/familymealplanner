@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { getAuth } from '@/lib/api-auth'
 import { db } from '@/lib/db'
 import { RecipeType } from '@prisma/client'
 
@@ -20,8 +20,8 @@ const plannedMealInclude = {
 
 export async function POST(request: Request) {
   try {
-    const session = await auth()
-    if (!session?.user?.householdId) {
+    const authResult = await getAuth(request)
+    if (!authResult) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const mealPlan = await db.mealPlan.findFirst({
       where: {
         id: mealPlanId,
-        householdId: session.user.householdId,
+        householdId: authResult.householdId,
       },
     })
 
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       recipe = await db.recipe.findFirst({
         where: {
           id: recipeId,
-          householdId: session.user.householdId,
+          householdId: authResult.householdId,
         },
       })
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       const familyMember = await db.familyMember.findFirst({
         where: {
           id: familyMemberId,
-          householdId: session.user.householdId,
+          householdId: authResult.householdId,
         },
       })
 
