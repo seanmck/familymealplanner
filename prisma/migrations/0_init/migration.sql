@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "RecipeType" AS ENUM ('MAIN', 'SIDE');
+
+-- CreateEnum
 CREATE TYPE "FamilyRole" AS ENUM ('ADULT', 'CHILD');
 
 -- CreateEnum
@@ -11,8 +14,10 @@ CREATE TYPE "MealType" AS ENUM ('DINNER', 'LUNCH');
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
-    "hashedPassword" TEXT NOT NULL,
+    "hashedPassword" TEXT,
     "name" TEXT,
+    "image" TEXT,
+    "emailVerified" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "householdId" TEXT,
@@ -31,6 +36,24 @@ CREATE TABLE "Session" (
 );
 
 -- CreateTable
+CREATE TABLE "Account" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "type" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerAccountId" TEXT NOT NULL,
+    "refresh_token" TEXT,
+    "access_token" TEXT,
+    "expires_at" INTEGER,
+    "token_type" TEXT,
+    "scope" TEXT,
+    "id_token" TEXT,
+    "session_state" TEXT,
+
+    CONSTRAINT "Account_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Household" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -38,6 +61,32 @@ CREATE TABLE "Household" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Household_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "ApiToken" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastUsedAt" TIMESTAMP(3),
+    "householdId" TEXT NOT NULL,
+
+    CONSTRAINT "ApiToken_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "GoogleCalendarSettings" (
+    "id" TEXT NOT NULL,
+    "householdId" TEXT NOT NULL,
+    "connectedUserId" TEXT,
+    "calendarIds" TEXT[] DEFAULT ARRAY['primary']::TEXT[],
+    "availableCalendars" JSONB,
+    "showOnPlanner" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GoogleCalendarSettings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -49,8 +98,11 @@ CREATE TABLE "Recipe" (
     "cookTimeMinutes" INTEGER,
     "servings" INTEGER NOT NULL DEFAULT 4,
     "instructions" TEXT NOT NULL,
+    "notes" TEXT,
     "imageUrl" TEXT,
+    "sourceUrl" TEXT,
     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "type" "RecipeType" NOT NULL DEFAULT 'MAIN',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "householdId" TEXT NOT NULL,
@@ -118,9 +170,21 @@ CREATE TABLE "PlannedMeal" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "mealPlanId" TEXT NOT NULL,
-    "recipeId" TEXT,
+    "familyMemberId" TEXT,
 
     CONSTRAINT "PlannedMeal_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "PlannedMealRecipe" (
+    "id" TEXT NOT NULL,
+    "role" "RecipeType" NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "plannedMealId" TEXT NOT NULL,
+    "recipeId" TEXT NOT NULL,
+
+    CONSTRAINT "PlannedMealRecipe_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -162,6 +226,22 @@ CREATE TABLE "PantryStaple" (
     CONSTRAINT "PantryStaple_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "LunchboxItem" (
+    "id" TEXT NOT NULL,
+    "dayOfWeek" INTEGER NOT NULL,
+    "category" TEXT,
+    "name" TEXT NOT NULL,
+    "notes" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "mealPlanId" TEXT NOT NULL,
+    "familyMemberId" TEXT NOT NULL,
+
+    CONSTRAINT "LunchboxItem_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
@@ -172,10 +252,31 @@ CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
 CREATE INDEX "Session_userId_idx" ON "Session"("userId");
 
 -- CreateIndex
+CREATE INDEX "Account_userId_idx" ON "Account"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Account_provider_providerAccountId_key" ON "Account"("provider", "providerAccountId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "ApiToken_token_key" ON "ApiToken"("token");
+
+-- CreateIndex
+CREATE INDEX "ApiToken_householdId_idx" ON "ApiToken"("householdId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GoogleCalendarSettings_householdId_key" ON "GoogleCalendarSettings"("householdId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GoogleCalendarSettings_connectedUserId_key" ON "GoogleCalendarSettings"("connectedUserId");
+
+-- CreateIndex
 CREATE INDEX "Recipe_householdId_idx" ON "Recipe"("householdId");
 
 -- CreateIndex
 CREATE INDEX "Recipe_title_idx" ON "Recipe"("title");
+
+-- CreateIndex
+CREATE INDEX "Recipe_type_idx" ON "Recipe"("type");
 
 -- CreateIndex
 CREATE INDEX "Ingredient_recipeId_idx" ON "Ingredient"("recipeId");
@@ -205,10 +306,19 @@ CREATE UNIQUE INDEX "MealPlan_householdId_weekStartDate_key" ON "MealPlan"("hous
 CREATE INDEX "PlannedMeal_mealPlanId_idx" ON "PlannedMeal"("mealPlanId");
 
 -- CreateIndex
-CREATE INDEX "PlannedMeal_recipeId_idx" ON "PlannedMeal"("recipeId");
+CREATE INDEX "PlannedMeal_familyMemberId_idx" ON "PlannedMeal"("familyMemberId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "PlannedMeal_mealPlanId_dayOfWeek_mealType_key" ON "PlannedMeal"("mealPlanId", "dayOfWeek", "mealType");
+CREATE UNIQUE INDEX "PlannedMeal_mealPlanId_dayOfWeek_mealType_familyMemberId_key" ON "PlannedMeal"("mealPlanId", "dayOfWeek", "mealType", "familyMemberId");
+
+-- CreateIndex
+CREATE INDEX "PlannedMealRecipe_plannedMealId_idx" ON "PlannedMealRecipe"("plannedMealId");
+
+-- CreateIndex
+CREATE INDEX "PlannedMealRecipe_recipeId_idx" ON "PlannedMealRecipe"("recipeId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "PlannedMealRecipe_plannedMealId_recipeId_key" ON "PlannedMealRecipe"("plannedMealId", "recipeId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "GroceryList_mealPlanId_key" ON "GroceryList"("mealPlanId");
@@ -225,11 +335,29 @@ CREATE INDEX "PantryStaple_householdId_idx" ON "PantryStaple"("householdId");
 -- CreateIndex
 CREATE UNIQUE INDEX "PantryStaple_householdId_name_key" ON "PantryStaple"("householdId", "name");
 
+-- CreateIndex
+CREATE INDEX "LunchboxItem_mealPlanId_familyMemberId_dayOfWeek_idx" ON "LunchboxItem"("mealPlanId", "familyMemberId", "dayOfWeek");
+
+-- CreateIndex
+CREATE INDEX "LunchboxItem_familyMemberId_idx" ON "LunchboxItem"("familyMemberId");
+
 -- AddForeignKey
 ALTER TABLE "User" ADD CONSTRAINT "User_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ApiToken" ADD CONSTRAINT "ApiToken_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GoogleCalendarSettings" ADD CONSTRAINT "GoogleCalendarSettings_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "GoogleCalendarSettings" ADD CONSTRAINT "GoogleCalendarSettings_connectedUserId_fkey" FOREIGN KEY ("connectedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Recipe" ADD CONSTRAINT "Recipe_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -253,7 +381,13 @@ ALTER TABLE "MealPlan" ADD CONSTRAINT "MealPlan_householdId_fkey" FOREIGN KEY ("
 ALTER TABLE "PlannedMeal" ADD CONSTRAINT "PlannedMeal_mealPlanId_fkey" FOREIGN KEY ("mealPlanId") REFERENCES "MealPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "PlannedMeal" ADD CONSTRAINT "PlannedMeal_recipeId_fkey" FOREIGN KEY ("recipeId") REFERENCES "Recipe"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "PlannedMeal" ADD CONSTRAINT "PlannedMeal_familyMemberId_fkey" FOREIGN KEY ("familyMemberId") REFERENCES "FamilyMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlannedMealRecipe" ADD CONSTRAINT "PlannedMealRecipe_plannedMealId_fkey" FOREIGN KEY ("plannedMealId") REFERENCES "PlannedMeal"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PlannedMealRecipe" ADD CONSTRAINT "PlannedMealRecipe_recipeId_fkey" FOREIGN KEY ("recipeId") REFERENCES "Recipe"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "GroceryList" ADD CONSTRAINT "GroceryList_mealPlanId_fkey" FOREIGN KEY ("mealPlanId") REFERENCES "MealPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -266,3 +400,10 @@ ALTER TABLE "GroceryItem" ADD CONSTRAINT "GroceryItem_ingredientId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "PantryStaple" ADD CONSTRAINT "PantryStaple_householdId_fkey" FOREIGN KEY ("householdId") REFERENCES "Household"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LunchboxItem" ADD CONSTRAINT "LunchboxItem_mealPlanId_fkey" FOREIGN KEY ("mealPlanId") REFERENCES "MealPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LunchboxItem" ADD CONSTRAINT "LunchboxItem_familyMemberId_fkey" FOREIGN KEY ("familyMemberId") REFERENCES "FamilyMember"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
