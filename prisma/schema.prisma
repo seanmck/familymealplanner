@@ -16,15 +16,19 @@ datasource db {
 model User {
   id             String    @id @default(cuid())
   email          String    @unique
-  hashedPassword String
+  hashedPassword String?   // Optional for OAuth-only users
   name           String?
+  image          String?   // Profile photo from OAuth providers
+  emailVerified  DateTime? // OAuth email verification status
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   // Relations
-  householdId String?
-  household   Household? @relation(fields: [householdId], references: [id], onDelete: SetNull)
-  sessions    Session[]
+  householdId              String?
+  household                Household?              @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  sessions                 Session[]
+  accounts                 Account[]
+  googleCalendarConnection GoogleCalendarSettings? @relation("CalendarConnectedUser")
 }
 
 model Session {
@@ -37,6 +41,26 @@ model Session {
   @@index([userId])
 }
 
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String  // "oauth" or "oidc"
+  provider          String  // "google", "credentials", etc.
+  providerAccountId String  // Provider's unique user ID
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?    // Unix timestamp when access_token expires
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
 model Household {
   id        String   @id @default(cuid())
   name      String
@@ -44,12 +68,13 @@ model Household {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users         User[]
-  recipes       Recipe[]
-  familyMembers FamilyMember[]
-  mealPlans     MealPlan[]
-  pantryStaples PantryStaple[]
-  apiTokens     ApiToken[]
+  users                  User[]
+  recipes                Recipe[]
+  familyMembers          FamilyMember[]
+  mealPlans              MealPlan[]
+  pantryStaples          PantryStaple[]
+  apiTokens              ApiToken[]
+  googleCalendarSettings GoogleCalendarSettings?
 }
 
 // ============================================================================
@@ -68,6 +93,28 @@ model ApiToken {
   household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 
   @@index([householdId])
+}
+
+// ============================================================================
+// Google Calendar Integration
+// ============================================================================
+
+model GoogleCalendarSettings {
+  id              String   @id @default(cuid())
+  householdId     String   @unique
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  // The user whose Google account provides calendar access
+  connectedUserId String?  @unique
+  connectedUser   User?    @relation("CalendarConnectedUser", fields: [connectedUserId], references: [id], onDelete: SetNull)
+
+  // Calendar configuration
+  calendarIds        String[]  @default(["primary"]) // Selected calendar IDs to display
+  availableCalendars Json?     // Cached list of user's accessible calendars
+  showOnPlanner      Boolean   @default(true)        // Toggle visibility on planner
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 // ============================================================================

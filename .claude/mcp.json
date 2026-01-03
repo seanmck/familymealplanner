@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+      "familytable": {
+        "command": "node",
+        "args": ["./mcp/dist/index.js"],
+        "env": {
+          "FAMILYTABLE_API_URL": "http://localhost:3000",
+          "FAMILYTABLE_API_TOKEN": "ft_your_token"
+        }
+      }
+    }
+}

@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key } from 'lucide-react'
+import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key, CalendarDays } from 'lucide-react'
 import { formatDateString } from '@/lib/utils/dates'
 
 const navItems = [
@@ -191,6 +191,12 @@ export function Navigation() {
               <Link href="/settings/api-tokens" className="flex items-center gap-2 cursor-pointer">
                 <Key className="h-4 w-4" />
                 API Tokens
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings/calendar" className="flex items-center gap-2 cursor-pointer">
+                <CalendarDays className="h-4 w-4" />
+                Google Calendar
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

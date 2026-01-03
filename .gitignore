@@ -74,3 +74,4 @@ docker-data/
 .Trashes
 ehthumbs.db
 Desktop.ini
+.mcp.json

@@ -15,7 +15,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { AlertCircle, Loader2, Mail, Lock } from 'lucide-react'
+import { AlertCircle, Loader2, Mail, Lock, Chrome } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -23,6 +23,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,6 +47,17 @@ export default function LoginPage() {
       setError('Something went wrong')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true)
+    setError('')
+    try {
+      await signIn('google', { callbackUrl: '/planner' })
+    } catch {
+      setError('Failed to sign in with Google')
+      setIsGoogleLoading(false)
     }
   }
 
@@ -104,7 +116,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             className="w-full h-11 text-base font-medium shadow-sm"
-            disabled={isLoading}
+            disabled={isLoading || isGoogleLoading}
           >
             {isLoading ? (
               <>
@@ -115,6 +127,38 @@ export default function LoginPage() {
               'Sign in'
             )}
           </Button>
+
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border/60" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-11 text-base font-medium"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading || isGoogleLoading}
+          >
+            {isGoogleLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Connecting...
+              </>
+            ) : (
+              <>
+                <Chrome className="h-4 w-4 mr-2" />
+                Google
+              </>
+            )}
+          </Button>
+
           <p className="text-sm text-muted-foreground text-center">
             Don&apos;t have an account?{' '}
             <Link

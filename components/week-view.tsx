@@ -9,6 +9,9 @@ import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
 import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
 import { PlannerSuggestions } from '@/components/planner-suggestions'
+import { CalendarEventBadge } from '@/components/calendar-event-badge'
+import { CalendarEventsDialog } from '@/components/calendar-events-dialog'
+import type { WeekCalendarData } from '@/lib/google-calendar'
 import { getMonday, formatWeekRange, addWeeks, formatDateString, DAYS_OF_WEEK } from '@/lib/utils/dates'
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package } from 'lucide-react'
 import {
@@ -87,8 +90,14 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
   // Per-member lunch dialog (shows after selecting a member)
   const [memberLunchOpen, setMemberLunchOpen] = useState(false)
 
+  // Calendar state
+  const [calendarData, setCalendarData] = useState<WeekCalendarData>({})
+  const [calendarDialogOpen, setCalendarDialogOpen] = useState(false)
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | null>(null)
+
   useEffect(() => {
     fetchMealPlan()
+    fetchCalendarData()
   }, [weekStart])
 
   const fetchMealPlan = async () => {
@@ -108,6 +117,26 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const fetchCalendarData = async () => {
+    try {
+      const response = await fetch(
+        `/api/calendar/week?weekStart=${weekStart.toISOString()}`
+      )
+      if (response.ok) {
+        const data = await response.json()
+        setCalendarData(data)
+      }
+    } catch (error) {
+      // Calendar is optional, don't show error
+      console.debug('Calendar data not available:', error)
+    }
+  }
+
+  const handleCalendarBadgeClick = (dayDate: Date) => {
+    setSelectedCalendarDate(dayDate)
+    setCalendarDialogOpen(true)
   }
 
   const createMealPlan = async () => {
@@ -394,18 +423,27 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                           <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                             {day}
                           </span>
-                          <Badge
-                            variant={isToday ? 'default' : 'outline'}
-                            className={`
-                              h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
-                              ${isToday
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-transparent border-border/60'
-                              }
-                            `}
-                          >
-                            {dayDate.getDate()}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            {calendarData[index]?.count > 0 && (
+                              <CalendarEventBadge
+                                count={calendarData[index].count}
+                                hasAllDay={calendarData[index].hasAllDay}
+                                onClick={() => handleCalendarBadgeClick(dayDate)}
+                              />
+                            )}
+                            <Badge
+                              variant={isToday ? 'default' : 'outline'}
+                              className={`
+                                h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
+                                ${isToday
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-transparent border-border/60'
+                                }
+                              `}
+                            >
+                              {dayDate.getDate()}
+                            </Badge>
+                          </div>
                         </div>
                       </CardHeader>
                     </Link>
@@ -478,18 +516,27 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                           <span className={`text-sm font-medium ${isToday ? 'text-primary' : 'text-muted-foreground'}`}>
                             {day}
                           </span>
-                          <Badge
-                            variant={isToday ? 'default' : 'outline'}
-                            className={`
-                              h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
-                              ${isToday
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-transparent border-border/60'
-                              }
-                            `}
-                          >
-                            {dayDate.getDate()}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            {calendarData[index]?.count > 0 && (
+                              <CalendarEventBadge
+                                count={calendarData[index].count}
+                                hasAllDay={calendarData[index].hasAllDay}
+                                onClick={() => handleCalendarBadgeClick(dayDate)}
+                              />
+                            )}
+                            <Badge
+                              variant={isToday ? 'default' : 'outline'}
+                              className={`
+                                h-7 w-7 rounded-full p-0 flex items-center justify-center text-xs font-medium
+                                ${isToday
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-transparent border-border/60'
+                                }
+                              `}
+                            >
+                              {dayDate.getDate()}
+                            </Badge>
+                          </div>
                         </div>
                       </CardHeader>
                     </Link>
@@ -668,6 +715,15 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Calendar Events Dialog */}
+      {selectedCalendarDate && (
+        <CalendarEventsDialog
+          open={calendarDialogOpen}
+          onOpenChange={setCalendarDialogOpen}
+          date={selectedCalendarDate}
+        />
+      )}
     </div>
   )
 }
