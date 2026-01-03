@@ -83,6 +83,11 @@ export const mealPlanTools: Tool[] = [
           enum: ['MAIN', 'SIDE'],
           description: 'Role of the recipe in the meal (default: MAIN)',
         },
+        familyMemberId: {
+          type: 'string',
+          description:
+            'Optional: ID of family member for per-person meal (e.g., alternate dinner for a child). Omit for shared family meal.',
+        },
       },
       required: ['weekStart', 'dayOfWeek'],
     },
@@ -207,6 +212,7 @@ export async function handleMealPlanTool(
       const placeholderTitle = args.placeholderTitle as string | undefined
       const notes = args.notes as string | undefined
       const role = (args.role as 'MAIN' | 'SIDE') || 'MAIN'
+      const familyMemberId = args.familyMemberId as string | undefined
 
       if (!weekStart) {
         throw new Error('weekStart is required (format: YYYY-MM-DD)')
@@ -232,21 +238,26 @@ export async function handleMealPlanTool(
         placeholderTitle,
         notes,
         role,
+        familyMemberId,
       })
 
       const dayName = DAY_NAMES[dayOfWeek] || `Day ${dayOfWeek}`
       const mealName = recipeId
         ? plannedMeal.recipes?.[0]?.recipe?.title || 'Recipe'
         : placeholderTitle
+      const forMember = plannedMeal.familyMember?.name
+        ? ` for ${plannedMeal.familyMember.name}`
+        : ''
 
       return JSON.stringify(
         {
-          message: `Added "${mealName}" to ${dayName} ${mealType.toLowerCase()}`,
+          message: `Added "${mealName}" to ${dayName} ${mealType.toLowerCase()}${forMember}`,
           plannedMeal: {
             id: plannedMeal.id,
             dayOfWeek,
             dayName,
             mealType,
+            forMember: plannedMeal.familyMember?.name || null,
             recipes: plannedMeal.recipes?.map((r) => ({
               title: r.recipe.title,
               role: r.role,

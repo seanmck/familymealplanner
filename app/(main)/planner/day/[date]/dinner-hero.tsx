@@ -5,6 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   UtensilsCrossed,
   Clock,
   Users,
@@ -16,6 +22,7 @@ import {
   ThumbsDown,
   Minus,
   AlertTriangle,
+  ChevronDown,
 } from 'lucide-react'
 
 interface Recipe {
@@ -46,6 +53,12 @@ interface PlannedMeal {
   mealType: 'DINNER' | 'LUNCH'
   placeholderTitle: string | null
   recipes: PlannedMealRecipe[]
+  familyMemberId?: string | null
+  familyMember?: {
+    id: string
+    name: string
+    role: 'ADULT' | 'CHILD'
+  } | null
 }
 
 interface FamilyMember {
@@ -57,19 +70,25 @@ interface FamilyMember {
 interface DinnerHeroProps {
   meal: PlannedMeal | null | undefined
   familyMembers: FamilyMember[]
+  alternateMeals?: PlannedMeal[]
   onEditClick: () => void
   onAddSide: () => void
   onRemoveSide: (recipeId: string) => void
   onClear: () => void
+  onAddAlternate?: (memberId: string) => void
+  onRemoveAlternate?: (mealId: string) => void
 }
 
 export function DinnerHero({
   meal,
   familyMembers,
+  alternateMeals = [],
   onEditClick,
   onAddSide,
   onRemoveSide,
   onClear,
+  onAddAlternate,
+  onRemoveAlternate,
 }: DinnerHeroProps) {
   const mainRecipe = meal?.recipes?.find((r) => r.role === 'MAIN')?.recipe
   const sideRecipes = meal?.recipes?.filter((r) => r.role === 'SIDE') || []
@@ -253,6 +272,70 @@ export function DinnerHero({
                 <p className="text-sm text-muted-foreground italic">No sides planned</p>
               )}
             </div>
+
+            {/* Alternate Meals - for family members eating something different */}
+            {onAddAlternate && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-medium text-muted-foreground">Alternate Meals</h3>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs">
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add alternate
+                        <ChevronDown className="h-3 w-3 ml-1" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {familyMembers
+                        .filter(m => !alternateMeals.some(am => am.familyMemberId === m.id))
+                        .map((member) => (
+                          <DropdownMenuItem
+                            key={member.id}
+                            onClick={() => onAddAlternate(member.id)}
+                          >
+                            {member.name}
+                          </DropdownMenuItem>
+                        ))}
+                      {familyMembers.filter(m => !alternateMeals.some(am => am.familyMemberId === m.id)).length === 0 && (
+                        <DropdownMenuItem disabled>
+                          All members have alternates
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {alternateMeals.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {alternateMeals.map((altMeal) => {
+                      const altRecipe = altMeal.recipes?.find((r) => r.role === 'MAIN')?.recipe
+                      const displayTitle = altRecipe?.title || altMeal.placeholderTitle || 'Unnamed'
+                      return (
+                        <Badge
+                          key={altMeal.id}
+                          variant="outline"
+                          className="gap-1 pr-1 text-sm"
+                        >
+                          <span className="font-medium">{altMeal.familyMember?.name}:</span>
+                          <span>{displayTitle}</span>
+                          {onRemoveAlternate && (
+                            <button
+                              onClick={() => onRemoveAlternate(altMeal.id)}
+                              className="ml-1 hover:bg-destructive/20 rounded p-0.5"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </Badge>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">Everyone eating the same thing</p>
+                )}
+              </div>
+            )}
           </CardContent>
             </div>
           </div>

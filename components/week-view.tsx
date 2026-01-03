@@ -283,6 +283,13 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
     ) || []
   }
 
+  // Get all per-person dinner meals for a day (alternate dinners)
+  const getMemberDinnerMeals = (dayOfWeek: number) => {
+    return mealPlan?.plannedMeals.filter(
+      (m) => m.dayOfWeek === dayOfWeek && m.mealType === 'DINNER' && m.familyMemberId
+    ) || []
+  }
+
   const getLunchboxItemsForDay = (dayOfWeek: number) => {
     return mealPlan?.lunchboxItems?.filter((item) => item.dayOfWeek === dayOfWeek) || []
   }
@@ -451,6 +458,12 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                       <MealSlot
                         label="Dinner"
                         meal={dinnerMeal}
+                        memberDinnerMeals={getMemberDinnerMeals(index).map((m) => ({
+                          memberId: m.familyMemberId!,
+                          memberName: m.familyMember?.name || '',
+                          recipeTitle: m.recipes?.find((r) => r.role === 'MAIN')?.recipe.title,
+                          placeholderTitle: m.placeholderTitle,
+                        }))}
                         onClick={() => handleSlotClick(index, 'DINNER')}
                         onClear={
                           dinnerMeal
@@ -544,6 +557,12 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                       <MealSlot
                         label="Dinner"
                         meal={dinnerMeal}
+                        memberDinnerMeals={getMemberDinnerMeals(index).map((m) => ({
+                          memberId: m.familyMemberId!,
+                          memberName: m.familyMember?.name || '',
+                          recipeTitle: m.recipes?.find((r) => r.role === 'MAIN')?.recipe.title,
+                          placeholderTitle: m.placeholderTitle,
+                        }))}
                         onClick={() => handleSlotClick(index, 'DINNER')}
                         onClear={
                           dinnerMeal

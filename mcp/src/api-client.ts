@@ -311,6 +311,7 @@ export class ApiClient {
     mealType: 'DINNER' | 'LUNCH'
     notes?: string
     role?: 'MAIN' | 'SIDE'
+    familyMemberId?: string
   }): Promise<PlannedMeal> {
     return this.request('/api/planned-meals', {
       method: 'POST',

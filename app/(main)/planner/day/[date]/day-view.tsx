@@ -151,6 +151,13 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
     ) || []
   }
 
+  // Get per-member alternate dinner meals for this day
+  const getAlternateDinnerMeals = () => {
+    return mealPlan?.plannedMeals.filter(
+      (m) => m.dayOfWeek === dayOfWeek && m.mealType === 'DINNER' && m.familyMemberId
+    ) || []
+  }
+
   // Get a specific member's lunch meal
   const getMemberLunchMeal = (memberId: string) => {
     return mealPlan?.plannedMeals.find(
@@ -241,6 +248,35 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
       familyMemberId: memberId,
     })
     setPickerOpen(true)
+  }
+
+  // Handle adding an alternate dinner for a specific member
+  const handleAddAlternateDinner = (memberId: string) => {
+    const existingMeal = getAlternateDinnerMeals().find(m => m.familyMemberId === memberId)
+    const existingPlaceholder = existingMeal && existingMeal.recipes.length === 0 && existingMeal.placeholderTitle
+      ? existingMeal.placeholderTitle
+      : undefined
+    setSelectedSlot({
+      mealType: 'DINNER',
+      existingPlaceholder,
+      mode: 'main',
+      plannedMealId: existingMeal?.id,
+      familyMemberId: memberId,
+    })
+    setPickerOpen(true)
+  }
+
+  // Handle removing an alternate dinner meal
+  const handleRemoveAlternateDinner = async (mealId: string) => {
+    try {
+      await fetch(`/api/planned-meals/${mealId}`, {
+        method: 'DELETE',
+      })
+      fetchMealPlan()
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to remove alternate dinner:', error)
+    }
   }
 
   const handleSelectRecipe = async (recipeId: string | null, placeholder?: string) => {
@@ -355,10 +391,13 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
           <DinnerHero
             meal={getDinnerMeal()}
             familyMembers={familyMembers}
+            alternateMeals={getAlternateDinnerMeals()}
             onEditClick={handleDinnerEdit}
             onAddSide={handleAddSide}
             onRemoveSide={handleRemoveSide}
             onClear={handleClearDinner}
+            onAddAlternate={handleAddAlternateDinner}
+            onRemoveAlternate={handleRemoveAlternateDinner}
           />
 
           {/* Family Lunches Grid */}

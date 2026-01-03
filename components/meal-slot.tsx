@@ -40,7 +40,7 @@ interface LunchboxItem {
   }
 }
 
-interface MemberLunchMeal {
+interface MemberMeal {
   memberId: string
   memberName: string
   recipeTitle?: string
@@ -51,14 +51,15 @@ interface MealSlotProps {
   label: string
   meal?: PlannedMeal | null
   lunchboxItems?: LunchboxItem[]
-  memberLunchMeals?: MemberLunchMeal[]
+  memberLunchMeals?: MemberMeal[]
+  memberDinnerMeals?: MemberMeal[]
   onClick: () => void
   onClear?: () => void
   onAddSide?: () => void
   onRemoveSide?: (recipeId: string) => void
 }
 
-export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [], onClick, onClear, onAddSide, onRemoveSide }: MealSlotProps) {
+export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [], memberDinnerMeals = [], onClick, onClear, onAddSide, onRemoveSide }: MealSlotProps) {
   const mainRecipe = meal?.recipes?.find((r) => r.role === 'MAIN')?.recipe
   const sideRecipes = meal?.recipes?.filter((r) => r.role === 'SIDE') || []
 
@@ -68,9 +69,11 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
   const isNew = mainRecipe && mainRecipe.ratings.length === 0
 
   const isLunch = label.toLowerCase() === 'lunch'
+  const isDinner = label.toLowerCase() === 'dinner'
   const hasMainOrPlaceholder = mainRecipe || meal?.placeholderTitle
   const hasLunchboxItems = lunchboxItems.length > 0
   const hasMemberLunchMeals = memberLunchMeals.length > 0
+  const hasMemberDinnerMeals = memberDinnerMeals.length > 0
 
   return (
     <div className="group">
@@ -107,7 +110,7 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
         className={`
           w-full text-left p-3 rounded-xl border-2 border-dashed cursor-pointer
           min-h-[52px] transition-all duration-200
-          ${hasMainOrPlaceholder || hasLunchboxItems || hasMemberLunchMeals
+          ${hasMainOrPlaceholder || hasLunchboxItems || hasMemberLunchMeals || hasMemberDinnerMeals
             ? 'border-border/60 bg-card/60 hover:border-primary/40 hover:bg-card'
             : 'border-border/40 bg-muted/30 hover:border-primary/50 hover:bg-muted/50'
           }
@@ -115,7 +118,7 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
         `}
       >
         {/* Empty state */}
-        {!hasMainOrPlaceholder && !hasLunchboxItems && !hasMemberLunchMeals && (
+        {!hasMainOrPlaceholder && !hasLunchboxItems && !hasMemberLunchMeals && !hasMemberDinnerMeals && (
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Plus className="h-3.5 w-3.5" />
             Add {label.toLowerCase()}
@@ -174,6 +177,30 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
                 </Badge>
               )}
             </div>
+
+            {/* Alternate dinner meals for specific members */}
+            {hasMemberDinnerMeals && (
+              <div className="pt-1 border-t border-border/30 mt-1.5 space-y-0.5">
+                {memberDinnerMeals.map((m) => (
+                  <div key={m.memberId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="font-medium">{m.memberName}:</span>
+                    <span className="truncate">{m.recipeTitle || m.placeholderTitle}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dinner: Only alternate meals (no shared dinner) */}
+        {isDinner && !hasMainOrPlaceholder && hasMemberDinnerMeals && (
+          <div className="space-y-0.5">
+            {memberDinnerMeals.map((m) => (
+              <div key={m.memberId} className="flex items-center gap-1.5 text-sm">
+                <span className="font-medium text-foreground">{m.memberName}:</span>
+                <span className="text-muted-foreground truncate">{m.recipeTitle || m.placeholderTitle}</span>
+              </div>
+            ))}
           </div>
         )}
 
