@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Pencil } from 'lucide-react'
+import { Pencil, Package } from 'lucide-react'
 
 interface GroceryItemProps {
   id: string
@@ -15,6 +15,7 @@ interface GroceryItemProps {
   onToggle: (id: string, isChecked: boolean) => void
   onDelete: (id: string) => void
   onEdit: (id: string, name: string) => void
+  onAddToPantry: (id: string, name: string) => void
 }
 
 export function GroceryItem({
@@ -26,8 +27,10 @@ export function GroceryItem({
   onToggle,
   onDelete,
   onEdit,
+  onAddToPantry,
 }: GroceryItemProps) {
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isAddingToPantry, setIsAddingToPantry] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -35,6 +38,11 @@ export function GroceryItem({
   const handleDelete = async () => {
     setIsDeleting(true)
     await onDelete(id)
+  }
+
+  const handleAddToPantry = async () => {
+    setIsAddingToPantry(true)
+    await onAddToPantry(id, name)
   }
 
   const getDisplayText = () => {
@@ -119,8 +127,19 @@ export function GroceryItem({
         size="sm"
         onClick={startEditing}
         className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+        title="Edit item"
       >
         <Pencil className="h-3 w-3" />
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleAddToPantry}
+        disabled={isAddingToPantry}
+        className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-muted-foreground hover:text-primary"
+        title="Add to pantry staples"
+      >
+        <Package className="h-3 w-3" />
       </Button>
       <Button
         variant="ghost"
@@ -128,6 +147,7 @@ export function GroceryItem({
         onClick={handleDelete}
         disabled={isDeleting}
         className="opacity-0 group-hover:opacity-100 h-6 w-6 p-0 text-destructive"
+        title="Remove from list"
       >
         ×
       </Button>

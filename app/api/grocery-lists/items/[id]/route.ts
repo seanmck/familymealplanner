@@ -50,7 +50,7 @@ export async function PATCH(
   }
 }
 
-// DELETE - Remove a grocery item
+// DELETE - Remove a grocery item (and track exclusion for regeneration)
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -63,7 +63,7 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Verify item belongs to household
+    // Verify item belongs to household and get name + groceryListId
     const item = await db.groceryItem.findFirst({
       where: {
         id,
@@ -72,6 +72,11 @@ export async function DELETE(
             householdId: session.user.householdId,
           },
         },
+      },
+      select: {
+        id: true,
+        name: true,
+        groceryListId: true,
       },
     })
 
@@ -82,6 +87,18 @@ export async function DELETE(
       )
     }
 
+    // Add normalized item name to excluded list (so it doesn't reappear on regeneration)
+    const normalizedName = item.name.toLowerCase().trim()
+    await db.groceryList.update({
+      where: { id: item.groceryListId },
+      data: {
+        excludedItems: {
+          push: normalizedName,
+        },
+      },
+    })
+
+    // Delete the item
     await db.groceryItem.delete({
       where: { id },
     })

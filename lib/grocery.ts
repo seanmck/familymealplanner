@@ -12,16 +12,19 @@ interface GroceryItem {
 export interface GroceryList {
   id: string
   mealPlanId: string
+  excludedItems: string[]
   items: GroceryItem[]
 }
 
 /**
  * Generates a fresh grocery list from the current meal plan.
  * Always regenerates to ensure accuracy - replaces any existing list.
+ * @param excludedItems - Normalized item names to exclude (user deletions from previous regenerations)
  */
 export async function generateGroceryList(
   mealPlanId: string,
-  householdId: string
+  householdId: string,
+  excludedItems: string[] = []
 ): Promise<GroceryList | null> {
   // Fetch meal plan with all recipes and ingredients
   const mealPlan = await db.mealPlan.findFirst({
@@ -59,6 +62,9 @@ export async function generateGroceryList(
     pantryStaples.map((s) => s.name.toLowerCase().trim())
   )
 
+  // Create set of excluded items (normalized)
+  const excludedSet = new Set(excludedItems.map((s) => s.toLowerCase().trim()))
+
   // Aggregate ingredients from all recipes (mains and sides)
   const ingredientMap = new Map<
     string,
@@ -76,6 +82,11 @@ export async function generateGroceryList(
           normalizedName.includes(staple)
         )
         if (isStaple) {
+          continue
+        }
+
+        // Skip user-excluded items
+        if (excludedSet.has(normalizedName)) {
           continue
         }
 
@@ -115,6 +126,11 @@ export async function generateGroceryList(
       continue
     }
 
+    // Skip user-excluded items
+    if (excludedSet.has(normalizedName)) {
+      continue
+    }
+
     const existing = lunchboxMap.get(normalizedName)
     if (existing) {
       existing.count += 1
@@ -132,10 +148,11 @@ export async function generateGroceryList(
     where: { mealPlanId },
   })
 
-  // Create new grocery list with items
+  // Create new grocery list with items (preserving excluded items)
   const groceryList = await db.groceryList.create({
     data: {
       mealPlanId,
+      excludedItems,
       items: {
         create: [
           // Recipe ingredients

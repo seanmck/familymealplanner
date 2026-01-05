@@ -67,7 +67,12 @@ export function GroceryListView() {
           `/api/grocery-lists?mealPlanId=${mpData.id}`
         )
         const glData = await glResponse.json()
-        setGroceryList(glData)
+        if (glResponse.ok && glData && !glData.error) {
+          setGroceryList(glData)
+        } else {
+          console.error('Failed to fetch grocery list:', glData)
+          setGroceryList(null)
+        }
       } else {
         setGroceryList(null)
       }
@@ -147,6 +152,34 @@ export function GroceryListView() {
     }
   }
 
+  const handleAddToPantry = async (id: string, name: string) => {
+    // Optimistic update - remove from list
+    setGroceryList((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        items: prev.items.filter((item) => item.id !== id),
+      }
+    })
+
+    try {
+      // Add to pantry staples
+      await fetch('/api/pantry-staples', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+
+      // Delete from grocery list
+      await fetch(`/api/grocery-lists/items/${id}`, {
+        method: 'DELETE',
+      })
+    } catch (error) {
+      console.error('Failed to add to pantry:', error)
+      fetchData()
+    }
+  }
+
   const handleAddItem = async () => {
     if (!newItemName.trim() || !groceryList?.id) return
 
@@ -178,7 +211,7 @@ export function GroceryListView() {
   }
 
   // Group items by category
-  const itemsByCategory = groceryList?.items.reduce((acc, item) => {
+  const itemsByCategory = groceryList?.items?.reduce((acc, item) => {
     const category = item.category || 'Other'
     if (!acc[category]) {
       acc[category] = []
@@ -196,11 +229,11 @@ export function GroceryListView() {
       })
     : []
 
-  const totalItems = groceryList?.items.length || 0
-  const checkedItems = groceryList?.items.filter((i) => i.isChecked).length || 0
+  const totalItems = groceryList?.items?.length || 0
+  const checkedItems = groceryList?.items?.filter((i) => i.isChecked).length || 0
 
   const copyAsText = async () => {
-    if (!groceryList?.items.length) return
+    if (!groceryList?.items?.length) return
 
     // Build plaintext grouped by category
     const lines: string[] = []
@@ -375,6 +408,7 @@ export function GroceryListView() {
                   onToggle={handleToggle}
                   onDelete={handleDelete}
                   onEdit={handleEdit}
+                  onAddToPantry={handleAddToPantry}
                 />
               ))}
             </div>

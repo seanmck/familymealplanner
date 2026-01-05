@@ -36,13 +36,24 @@ export async function GET(request: Request) {
       )
     }
 
-    // Always generate fresh list
-    const groceryList = await generateGroceryList(mealPlanId, authResult.householdId)
+    // Fetch existing excluded items to preserve across regeneration
+    const existingList = await db.groceryList.findUnique({
+      where: { mealPlanId },
+      select: { excludedItems: true },
+    })
+
+    // Always generate fresh list (preserving user deletions)
+    const groceryList = await generateGroceryList(
+      mealPlanId,
+      authResult.householdId,
+      existingList?.excludedItems || []
+    )
     return NextResponse.json(groceryList)
   } catch (error) {
     console.error('Error fetching grocery list:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to fetch grocery list' },
+      { error: 'Failed to fetch grocery list', details: errorMessage },
       { status: 500 }
     )
   }
@@ -65,7 +76,17 @@ export async function POST(request: Request) {
       )
     }
 
-    const groceryList = await generateGroceryList(mealPlanId, authResult.householdId)
+    // Fetch existing excluded items to preserve across regeneration
+    const existingList = await db.groceryList.findUnique({
+      where: { mealPlanId },
+      select: { excludedItems: true },
+    })
+
+    const groceryList = await generateGroceryList(
+      mealPlanId,
+      authResult.householdId,
+      existingList?.excludedItems || []
+    )
 
     if (!groceryList) {
       return NextResponse.json(
@@ -77,8 +98,9 @@ export async function POST(request: Request) {
     return NextResponse.json(groceryList)
   } catch (error) {
     console.error('Error generating grocery list:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to generate grocery list' },
+      { error: 'Failed to generate grocery list', details: errorMessage },
       { status: 500 }
     )
   }

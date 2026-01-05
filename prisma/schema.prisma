@@ -332,9 +332,10 @@ model PlannedMealRecipe {
 // ============================================================================
 
 model GroceryList {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  excludedItems String[] @default([]) // Normalized names of items deleted by user (persist across regeneration)
 
   // Relations
   mealPlanId String      @unique
