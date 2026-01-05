@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus, Pencil, Check, MessageSquare } from 'lucide-react'
+import { X, Plus, Pencil, Check, MessageSquare, Copy } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const LUNCHBOX_CATEGORIES = ['main', 'side', 'fruit', 'snack', 'treat'] as const
@@ -89,11 +89,29 @@ function LunchboxPickerContent({
   const [editCategory, setEditCategory] = useState<string>('')
   const [showNotesFor, setShowNotesFor] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState('')
+  const [isCopying, setIsCopying] = useState(false)
 
   // Filter items for current tab and day
   const currentItems = existingItems.filter(
     (item) => item.familyMemberId === activeTab && item.dayOfWeek === dayOfWeek
   )
+
+  // Get earlier days that have items for the current member (for copy functionality)
+  const earlierDaysWithItems = Array.from(
+    new Set(
+      existingItems
+        .filter((item) => item.familyMemberId === activeTab && item.dayOfWeek < dayOfWeek)
+        .map((item) => item.dayOfWeek)
+    )
+  )
+    .sort((a, b) => a - b)
+    .map((day) => ({
+      dayOfWeek: day,
+      dayName: DAY_NAMES[day],
+      itemCount: existingItems.filter(
+        (item) => item.familyMemberId === activeTab && item.dayOfWeek === day
+      ).length,
+    }))
 
   const handleAddItem = async () => {
     if (!newItemName.trim() || !activeTab) return
@@ -220,6 +238,32 @@ function LunchboxPickerContent({
       console.error('Error quick-adding lunchbox item:', error)
     } finally {
       setIsAdding(false)
+    }
+  }
+
+  const handleCopyFromDay = async (sourceDayOfWeek: number) => {
+    if (!activeTab) return
+
+    setIsCopying(true)
+    try {
+      const response = await fetch('/api/lunchbox-items/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealPlanId,
+          familyMemberId: activeTab,
+          sourceDayOfWeek,
+          targetDayOfWeek: dayOfWeek,
+        }),
+      })
+
+      if (response.ok) {
+        onRefresh()
+      }
+    } catch (error) {
+      console.error('Error copying lunchbox items:', error)
+    } finally {
+      setIsCopying(false)
     }
   }
 
@@ -378,6 +422,28 @@ function LunchboxPickerContent({
             </p>
           )}
 
+          {/* Copy from earlier day */}
+          {earlierDaysWithItems.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs text-muted-foreground">Copy from:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {earlierDaysWithItems.map((day) => (
+                  <Button
+                    key={day.dayOfWeek}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleCopyFromDay(day.dayOfWeek)}
+                    disabled={isCopying || isAdding}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    {day.dayName} ({day.itemCount})
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Quick Add Suggestions */}
           {suggestions.length > 0 && (
             <div className="space-y-2 pt-2">
@@ -390,7 +456,7 @@ function LunchboxPickerContent({
                     size="sm"
                     className="h-7 text-xs"
                     onClick={() => handleQuickAdd(suggestion)}
-                    disabled={isAdding}
+                    disabled={isAdding || isCopying}
                   >
                     <Plus className="h-3 w-3 mr-1" />
                     {suggestion.name}

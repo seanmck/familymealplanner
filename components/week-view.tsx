@@ -13,7 +13,7 @@ import { CalendarEventBadge } from '@/components/calendar-event-badge'
 import { CalendarEventsDialog } from '@/components/calendar-events-dialog'
 import type { WeekCalendarData } from '@/lib/google-calendar'
 import { getMonday, formatWeekRange, addWeeks, formatDateString, DAYS_OF_WEEK } from '@/lib/utils/dates'
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package, Mail } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package, Mail, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -91,6 +91,7 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>(undefined)
   // Per-member lunch dialog (shows after selecting a member)
   const [memberLunchOpen, setMemberLunchOpen] = useState(false)
+  const [isCopyingLunch, setIsCopyingLunch] = useState(false)
 
   // Calendar state
   const [calendarData, setCalendarData] = useState<WeekCalendarData>({})
@@ -349,6 +350,66 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
   const handleMemberLunchboxChoice = () => {
     setMemberLunchOpen(false)
     setLunchboxPickerOpen(true)
+  }
+
+  // Get earlier days that have lunch content for a specific member
+  const getEarlierDaysWithLunch = (memberId: string, targetDay: number) => {
+    const days: Array<{ dayOfWeek: number; dayName: string; hasRecipe: boolean; itemCount: number }> = []
+
+    for (let day = 0; day < targetDay; day++) {
+      const meal = getMemberLunchMeal(day, memberId)
+      const items = getLunchboxItemsForDay(day).filter(item => item.familyMember.id === memberId)
+      const hasRecipe = !!(meal?.recipes?.length || meal?.placeholderTitle)
+      const itemCount = items.length
+
+      if (hasRecipe || itemCount > 0) {
+        days.push({
+          dayOfWeek: day,
+          dayName: DAYS_OF_WEEK[day],
+          hasRecipe,
+          itemCount,
+        })
+      }
+    }
+
+    return days
+  }
+
+  // Handle copying entire lunch from an earlier day
+  const handleCopyLunch = async (sourceDayOfWeek: number) => {
+    if (!selectedMemberId || !mealPlan?.id) return
+
+    setIsCopyingLunch(true)
+    try {
+      const response = await fetch('/api/lunches/copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealPlanId: mealPlan.id,
+          familyMemberId: selectedMemberId,
+          sourceDayOfWeek,
+          targetDayOfWeek: selectedLunchDay,
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        toast.success(
+          `Copied ${result.mealCopied ? 'recipe' : ''}${result.mealCopied && result.itemsCopied ? ' and ' : ''}${result.itemsCopied ? `${result.itemsCopied} items` : ''}`
+        )
+        setMemberLunchOpen(false)
+        fetchMealPlan()
+        router.refresh()
+      } else {
+        const error = await response.json()
+        toast.error(error.error || 'Failed to copy lunch')
+      }
+    } catch (error) {
+      console.error('Error copying lunch:', error)
+      toast.error('Failed to copy lunch')
+    } finally {
+      setIsCopyingLunch(false)
+    }
   }
 
   // Ensure meal plan exists for lunchbox items
@@ -711,6 +772,9 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
               const memberItems = selectedMemberId
                 ? getLunchboxItemsForDay(selectedLunchDay).filter(item => item.familyMember.id === selectedMemberId)
                 : []
+              const earlierDays = selectedMemberId
+                ? getEarlierDaysWithLunch(selectedMemberId, selectedLunchDay)
+                : []
               return (
                 <>
                   <Button
@@ -747,6 +811,31 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                       </p>
                     </div>
                   </Button>
+
+                  {/* Copy from earlier day */}
+                  {earlierDays.length > 0 && (
+                    <div className="pt-2 border-t mt-1">
+                      <p className="text-xs text-muted-foreground mb-2">Copy from earlier day:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {earlierDays.map((day) => (
+                          <Button
+                            key={day.dayOfWeek}
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={() => handleCopyLunch(day.dayOfWeek)}
+                            disabled={isCopyingLunch}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            {day.dayName}
+                            <span className="text-muted-foreground text-xs">
+                              ({day.hasRecipe ? '1 recipe' : ''}{day.hasRecipe && day.itemCount > 0 ? ', ' : ''}{day.itemCount > 0 ? `${day.itemCount} items` : ''})
+                            </span>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )
             })()}
