@@ -185,8 +185,18 @@ export async function POST(
       }
     })
 
-    // Generate fresh grocery list
-    const groceryList = await generateGroceryList(mealPlanId, authResult.householdId)
+    // Fetch existing excluded items to preserve user deletions
+    const existingList = await db.groceryList.findUnique({
+      where: { mealPlanId },
+      select: { excludedItems: true },
+    })
+
+    // Generate fresh grocery list (preserving user deletions)
+    const groceryList = await generateGroceryList(
+      mealPlanId,
+      authResult.householdId,
+      existingList?.excludedItems || []
+    )
 
     // Filter to unchecked items and group by category
     const uncheckedItems = groceryList?.items.filter((item) => !item.isChecked) || []
