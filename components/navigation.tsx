@@ -14,13 +14,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key, CalendarDays, Apple } from 'lucide-react'
+import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key, CalendarDays, Refrigerator } from 'lucide-react'
 import { formatDateString } from '@/lib/utils/dates'
 
 const navItems = [
   { href: '/planner', label: 'Planner', icon: Calendar },
   { href: '/recipes', label: 'Recipes', icon: BookOpen },
   { href: '/groceries', label: 'Groceries', icon: ShoppingCart },
+  { href: '/perishables', label: 'Perishables', icon: Refrigerator },
 ]
 
 // Today's date formatted for the URL
@@ -185,12 +186,6 @@ export function Navigation() {
               <Link href="/settings/pantry" className="flex items-center gap-2 cursor-pointer">
                 <Settings className="h-4 w-4" />
                 Pantry Staples
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings/perishables" className="flex items-center gap-2 cursor-pointer">
-                <Apple className="h-4 w-4" />
-                Perishables
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
