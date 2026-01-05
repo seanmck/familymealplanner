@@ -1,6 +1,13 @@
+export interface PerishableMatch {
+  perishableName: string
+  ingredientName: string
+  daysUntilExpiration: number | null
+}
+
 export type SuggestionReason =
   | { type: 'favorite'; upVotes: number; daysSinceUsed: number | null }
   | { type: 'ingredient-match'; matchedIngredients: string[]; matchCount: number }
+  | { type: 'perishable-match'; matchedPerishables: PerishableMatch[]; urgencyScore: number }
 
 export interface RecipeForSuggestion {
   id: string
@@ -24,6 +31,13 @@ export interface SuggestedRecipe {
 export interface SuggestionsResponse {
   favorites: SuggestedRecipe[]
   ingredientMatches?: SuggestedRecipe[]
+  perishableMatches?: SuggestedRecipe[]
+}
+
+export interface PerishableItem {
+  name: string
+  displayName: string
+  expirationDate: Date | null
 }
 
 export interface RecipeWithLastUsed {

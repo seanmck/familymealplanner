@@ -199,6 +199,16 @@ export async function handleRecipeTool(
         }))
       }
 
+      if (suggestions.perishableMatches) {
+        result.perishableMatches = suggestions.perishableMatches.map((s) => ({
+          title: s.recipe.title,
+          score: s.score,
+          reason: s.reason,
+          tags: s.recipe.tags,
+          note: 'Uses perishable items - prioritize to reduce waste',
+        }))
+      }
+
       return JSON.stringify(result, null, 2)
     }
 

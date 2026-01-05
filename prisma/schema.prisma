@@ -76,6 +76,7 @@ model Household {
   familyMembers          FamilyMember[]
   mealPlans              MealPlan[]
   pantryStaples          PantryStaple[]
+  perishables            Perishable[]
   apiTokens              ApiToken[]
   invitations            Invitation[]
   googleCalendarSettings GoogleCalendarSettings?
@@ -375,6 +376,29 @@ model PantryStaple {
 
   @@unique([householdId, name])
   @@index([householdId])
+}
+
+// ============================================================================
+// Perishable Inventory (items with expiration tracking)
+// ============================================================================
+
+model Perishable {
+  id             String    @id @default(cuid())
+  name           String    // Normalized name (lowercase, trimmed) for matching
+  displayName    String    // User-friendly display name
+  quantity       Decimal?  @db.Decimal(10, 3)
+  unit           String?   // "lbs", "oz", "count", etc.
+  expirationDate DateTime? @db.Date
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  householdId String
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, name])
+  @@index([householdId])
+  @@index([expirationDate])
 }
 
 // ============================================================================

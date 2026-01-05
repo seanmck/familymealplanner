@@ -4,12 +4,14 @@ import { getAuth } from '@/lib/api-auth'
 import {
   computeFavoriteScore,
   computeIngredientMatchScore,
+  computePerishableMatchScore,
   hasKidDownVotes,
 } from '@/lib/suggestions/scoring'
 import type {
   SuggestedRecipe,
   SuggestionsResponse,
   RecipeForSuggestion,
+  PerishableItem,
 } from '@/lib/suggestions/types'
 
 export async function GET(request: Request) {
@@ -164,9 +166,70 @@ export async function GET(request: Request) {
       ingredientMatches = ingredientScores.slice(0, limit)
     }
 
+    // Fetch household perishables for matching
+    const perishables = await db.perishable.findMany({
+      where: { householdId },
+      select: {
+        name: true,
+        displayName: true,
+        expirationDate: true,
+      },
+    })
+
+    // Compute perishable match scores if there are perishables
+    let perishableMatches: SuggestedRecipe[] | undefined
+    if (perishables.length > 0) {
+      const perishableItems: PerishableItem[] = perishables.map((p) => ({
+        name: p.name,
+        displayName: p.displayName,
+        expirationDate: p.expirationDate,
+      }))
+
+      const perishableScores: SuggestedRecipe[] = []
+
+      for (const recipe of recipes) {
+        const recipeForSuggestion: RecipeForSuggestion = {
+          id: recipe.id,
+          title: recipe.title,
+          tags: recipe.tags,
+          type: recipe.type,
+          ingredients: recipe.ingredients,
+          ratings: recipe.ratings.map((r) => ({
+            rating: r.rating,
+            member: { name: r.member.name, role: r.member.role },
+          })),
+        }
+
+        // Optionally filter out recipes with kid downvotes
+        if (excludeKidDownvotes && hasKidDownVotes(recipeForSuggestion)) {
+          continue
+        }
+
+        const { score, reason } = computePerishableMatchScore(
+          recipeForSuggestion,
+          perishableItems,
+          today
+        )
+
+        if (score > 0) {
+          perishableScores.push({
+            recipeId: recipe.id,
+            recipe: recipeForSuggestion,
+            score,
+            reason,
+          })
+        }
+      }
+
+      // Sort by score descending and take top N
+      perishableScores.sort((a, b) => b.score - a.score)
+      perishableMatches = perishableScores.slice(0, limit)
+    }
+
     const response: SuggestionsResponse = {
       favorites,
       ingredientMatches,
+      perishableMatches,
     }
 
     return NextResponse.json(response)

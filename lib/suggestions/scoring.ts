@@ -1,4 +1,4 @@
-import type { RecipeForSuggestion, SuggestionReason } from './types'
+import type { RecipeForSuggestion, SuggestionReason, PerishableItem, PerishableMatch } from './types'
 
 // Scoring weights for favorites
 const SCORING_WEIGHTS = {
@@ -16,6 +16,13 @@ const SCORING_WEIGHTS = {
   // Ingredient matching
   INGREDIENT_EXACT_MATCH: 15,
   INGREDIENT_PARTIAL_MATCH: 8,
+
+  // Perishable matching
+  PERISHABLE_BASE_MATCH: 10,
+  PERISHABLE_EXPIRING_TODAY: 30,
+  PERISHABLE_EXPIRING_3_DAYS: 20,
+  PERISHABLE_EXPIRING_7_DAYS: 10,
+  PERISHABLE_EXPIRED: 5, // Still suggest to use up, but lower priority
 }
 
 function differenceInDays(date1: Date, date2: Date): number {
@@ -130,4 +137,83 @@ export function hasKidDownVotes(recipe: RecipeForSuggestion): boolean {
   return recipe.ratings.some(
     (r) => r.rating === 'DOWN' && r.member.role === 'CHILD'
   )
+}
+
+export function computePerishableMatchScore(
+  recipe: RecipeForSuggestion,
+  perishables: PerishableItem[],
+  today: Date = new Date()
+): { score: number; reason: SuggestionReason } {
+  const matchedPerishables: PerishableMatch[] = []
+  let score = 0
+
+  // Normalize today to start of day for consistent comparison
+  const todayStart = new Date(today)
+  todayStart.setHours(0, 0, 0, 0)
+
+  for (const perishable of perishables) {
+    const normalizedPerishable = normalizeIngredient(perishable.name)
+
+    for (const ingredient of recipe.ingredients) {
+      const ingredientNormalized = normalizeIngredient(ingredient.name)
+
+      // Check for match (exact or partial)
+      const isMatch =
+        ingredientNormalized === normalizedPerishable ||
+        ingredientNormalized.includes(normalizedPerishable) ||
+        normalizedPerishable.includes(ingredientNormalized)
+
+      if (isMatch) {
+        // Calculate days until expiration
+        let daysUntilExpiration: number | null = null
+        let urgencyBonus = 0
+
+        if (perishable.expirationDate) {
+          const expDate = new Date(perishable.expirationDate)
+          expDate.setHours(0, 0, 0, 0)
+          daysUntilExpiration = Math.floor(
+            (expDate.getTime() - todayStart.getTime()) / (1000 * 60 * 60 * 24)
+          )
+
+          if (daysUntilExpiration < 0) {
+            urgencyBonus = SCORING_WEIGHTS.PERISHABLE_EXPIRED
+          } else if (daysUntilExpiration <= 1) {
+            urgencyBonus = SCORING_WEIGHTS.PERISHABLE_EXPIRING_TODAY
+          } else if (daysUntilExpiration <= 3) {
+            urgencyBonus = SCORING_WEIGHTS.PERISHABLE_EXPIRING_3_DAYS
+          } else if (daysUntilExpiration <= 7) {
+            urgencyBonus = SCORING_WEIGHTS.PERISHABLE_EXPIRING_7_DAYS
+          }
+        }
+
+        score += SCORING_WEIGHTS.PERISHABLE_BASE_MATCH + urgencyBonus
+
+        matchedPerishables.push({
+          perishableName: perishable.displayName,
+          ingredientName: ingredient.name,
+          daysUntilExpiration,
+        })
+
+        break // Only count each perishable once per recipe
+      }
+    }
+  }
+
+  // Calculate overall urgency score (average of matched items)
+  const urgencyScore =
+    matchedPerishables.length > 0
+      ? matchedPerishables.reduce((sum, p) => {
+          if (p.daysUntilExpiration === null) return sum
+          return sum + Math.max(0, 7 - p.daysUntilExpiration)
+        }, 0) / matchedPerishables.length
+      : 0
+
+  return {
+    score,
+    reason: {
+      type: 'perishable-match',
+      matchedPerishables,
+      urgencyScore,
+    },
+  }
 }

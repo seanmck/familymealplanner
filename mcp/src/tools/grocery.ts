@@ -26,6 +26,21 @@ export const groceryTools: Tool[] = [
       properties: {},
     },
   },
+  {
+    name: 'get_perishables',
+    description:
+      'Get the list of perishable items in the household inventory. Returns items with optional quantities and expiration dates. Items expiring soon should be prioritized when planning meals to reduce food waste.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        expiringWithinDays: {
+          type: 'number',
+          description:
+            'Filter to only show items expiring within this many days (optional)',
+        },
+      },
+    },
+  },
 ]
 
 export async function handleGroceryTool(
@@ -94,6 +109,73 @@ export async function handleGroceryTool(
         {
           totalStaples: staples.length,
           staples: staples.map((s) => s.displayName),
+        },
+        null,
+        2
+      )
+    }
+
+    case 'get_perishables': {
+      const perishables = await api.getPerishables()
+      const expiringWithinDays = args.expiringWithinDays as number | undefined
+
+      let filtered = perishables
+      if (expiringWithinDays !== undefined) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const cutoffDate = new Date(today)
+        cutoffDate.setDate(cutoffDate.getDate() + expiringWithinDays)
+
+        filtered = perishables.filter((p) => {
+          if (!p.expirationDate) return false
+          const expDate = new Date(p.expirationDate)
+          return expDate <= cutoffDate
+        })
+      }
+
+      if (filtered.length === 0) {
+        return expiringWithinDays
+          ? `No perishables expiring within ${expiringWithinDays} days.`
+          : 'No perishables in inventory. Add items in the app settings under Perishables.'
+      }
+
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+
+      const formatted = filtered.map((p) => {
+        const result: Record<string, unknown> = {
+          name: p.displayName,
+        }
+
+        if (p.quantity) {
+          result.quantity = p.unit ? `${p.quantity} ${p.unit}` : p.quantity
+        }
+
+        if (p.expirationDate) {
+          const expDate = new Date(p.expirationDate)
+          expDate.setHours(0, 0, 0, 0)
+          const daysUntil = Math.floor(
+            (expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+          )
+          result.expirationDate = p.expirationDate
+          result.daysUntilExpiration = daysUntil
+          result.status =
+            daysUntil < 0
+              ? 'expired'
+              : daysUntil === 0
+                ? 'expires_today'
+                : daysUntil <= 3
+                  ? 'expiring_soon'
+                  : 'fresh'
+        }
+
+        return result
+      })
+
+      return JSON.stringify(
+        {
+          totalItems: filtered.length,
+          perishables: formatted,
         },
         null,
         2

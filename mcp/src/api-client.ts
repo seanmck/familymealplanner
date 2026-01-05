@@ -85,6 +85,7 @@ interface ParsedRecipe {
 interface SuggestionsResponse {
   favorites: SuggestedRecipe[]
   ingredientMatches?: SuggestedRecipe[]
+  perishableMatches?: SuggestedRecipe[]
 }
 
 interface SuggestedRecipe {
@@ -199,6 +200,15 @@ interface PantryStaple {
   id: string
   name: string
   displayName: string
+}
+
+interface Perishable {
+  id: string
+  name: string
+  displayName: string
+  quantity: string | null
+  unit: string | null
+  expirationDate: string | null
 }
 
 export class ApiClient {
@@ -326,5 +336,9 @@ export class ApiClient {
 
   async getPantryStaples(): Promise<PantryStaple[]> {
     return this.request('/api/pantry-staples')
+  }
+
+  async getPerishables(): Promise<Perishable[]> {
+    return this.request('/api/perishables')
   }
 }

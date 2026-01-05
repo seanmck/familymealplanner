@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key, CalendarDays } from 'lucide-react'
+import { Calendar, BookOpen, ShoppingCart, Settings, Users, LogOut, ChefHat, Sun, Key, CalendarDays, Apple } from 'lucide-react'
 import { formatDateString } from '@/lib/utils/dates'
 
 const navItems = [
@@ -185,6 +185,12 @@ export function Navigation() {
               <Link href="/settings/pantry" className="flex items-center gap-2 cursor-pointer">
                 <Settings className="h-4 w-4" />
                 Pantry Staples
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings/perishables" className="flex items-center gap-2 cursor-pointer">
+                <Apple className="h-4 w-4" />
+                Perishables
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
