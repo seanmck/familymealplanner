@@ -54,6 +54,11 @@ export interface FamilyMember {
   role: 'ADULT' | 'CHILD'
 }
 
+export interface LunchboxSuggestion {
+  name: string
+  category: string | null
+}
+
 interface LunchboxPickerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -61,6 +66,7 @@ interface LunchboxPickerProps {
   mealPlanId: string
   familyMembers: FamilyMember[]
   existingItems: LunchboxItem[]
+  suggestions?: LunchboxSuggestion[]
   onRefresh: () => void
   initialMemberId?: string
 }
@@ -70,6 +76,7 @@ function LunchboxPickerContent({
   mealPlanId,
   familyMembers,
   existingItems,
+  suggestions = [],
   onRefresh,
   initialMemberId,
 }: Omit<LunchboxPickerProps, 'open' | 'onOpenChange'>) {
@@ -185,6 +192,34 @@ function LunchboxPickerContent({
     } else {
       setShowNotesFor(item.id)
       setEditNotes(item.notes || '')
+    }
+  }
+
+  const handleQuickAdd = async (suggestion: LunchboxSuggestion) => {
+    if (!activeTab) return
+
+    setIsAdding(true)
+    try {
+      const response = await fetch('/api/lunchbox-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mealPlanId,
+          familyMemberId: activeTab,
+          dayOfWeek,
+          name: suggestion.name,
+          category: suggestion.category,
+          sortOrder: currentItems.length,
+        }),
+      })
+
+      if (response.ok) {
+        onRefresh()
+      }
+    } catch (error) {
+      console.error('Error quick-adding lunchbox item:', error)
+    } finally {
+      setIsAdding(false)
     }
   }
 
@@ -343,6 +378,28 @@ function LunchboxPickerContent({
             </p>
           )}
 
+          {/* Quick Add Suggestions */}
+          {suggestions.length > 0 && (
+            <div className="space-y-2 pt-2">
+              <p className="text-xs text-muted-foreground">Recently used:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.slice(0, 8).map((suggestion, idx) => (
+                  <Button
+                    key={`${suggestion.name}-${idx}`}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => handleQuickAdd(suggestion)}
+                    disabled={isAdding}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    {suggestion.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Add Item */}
           <div className="flex gap-2 pt-2 border-t">
             <Input
@@ -385,6 +442,7 @@ export function LunchboxPicker({
   mealPlanId,
   familyMembers,
   existingItems,
+  suggestions,
   onRefresh,
   initialMemberId,
 }: LunchboxPickerProps) {
@@ -400,6 +458,7 @@ export function LunchboxPicker({
           mealPlanId={mealPlanId}
           familyMembers={familyMembers}
           existingItems={existingItems}
+          suggestions={suggestions}
           onRefresh={onRefresh}
           initialMemberId={initialMemberId}
         />

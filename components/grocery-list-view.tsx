@@ -15,7 +15,6 @@ import {
   ShoppingBag,
   Plus,
   Calendar,
-  ListChecks,
 } from 'lucide-react'
 
 interface GroceryItem {
@@ -50,6 +49,13 @@ export function GroceryListView() {
   useEffect(() => {
     fetchData()
   }, [weekStart])
+
+  // Auto-generate grocery list when meal plan exists but list doesn't
+  useEffect(() => {
+    if (!isLoading && mealPlan?.id && !groceryList && !isGenerating) {
+      generateList()
+    }
+  }, [isLoading, mealPlan?.id, groceryList])
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -262,27 +268,14 @@ export function GroceryListView() {
       ) : !groceryList ? (
         <div className="flex flex-col items-center justify-center py-16 px-4">
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
-            <ShoppingBag className="h-10 w-10 text-primary" />
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
           <h2 className="text-xl font-semibold text-center mb-2">
-            Ready to generate your list
+            Generating your grocery list
           </h2>
-          <p className="text-muted-foreground text-center max-w-sm mb-6">
-            We&apos;ll combine all ingredients from your planned meals into one organized shopping list.
+          <p className="text-muted-foreground text-center max-w-sm">
+            Combining ingredients from your planned meals...
           </p>
-          <Button onClick={generateList} disabled={isGenerating} className="gap-2">
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <ListChecks className="h-4 w-4" />
-                Generate Grocery List
-              </>
-            )}
-          </Button>
         </div>
       ) : (
         <div className="space-y-6">

@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
-import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
+import { LunchboxPicker, type LunchboxItem, type FamilyMember, type LunchboxSuggestion } from '@/components/lunchbox-picker'
 import { PlannerSuggestions } from '@/components/planner-suggestions'
 import { CalendarEventBadge } from '@/components/calendar-event-badge'
 import { CalendarEventsDialog } from '@/components/calendar-events-dialog'
 import type { WeekCalendarData } from '@/lib/google-calendar'
 import { getMonday, formatWeekRange, addWeeks, formatDateString, DAYS_OF_WEEK } from '@/lib/utils/dates'
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, UtensilsCrossed, Sparkles, AlertTriangle, ShoppingCart, Utensils, Package, Mail } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Dialog,
   DialogContent,
@@ -83,6 +84,7 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
   // Lunchbox picker state
   const [lunchboxPickerOpen, setLunchboxPickerOpen] = useState(false)
   const [selectedLunchDay, setSelectedLunchDay] = useState<number>(0)
+  const [lunchboxSuggestions, setLunchboxSuggestions] = useState<LunchboxSuggestion[]>([])
 
   // Lunch choice dialog state
   const [lunchChoiceOpen, setLunchChoiceOpen] = useState(false)
@@ -99,6 +101,22 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
     fetchMealPlan()
     fetchCalendarData()
   }, [weekStart])
+
+  useEffect(() => {
+    fetchLunchboxSuggestions()
+  }, [])
+
+  const fetchLunchboxSuggestions = async () => {
+    try {
+      const response = await fetch('/api/lunchbox-items/suggestions')
+      if (response.ok) {
+        const data = await response.json()
+        setLunchboxSuggestions(data)
+      }
+    } catch (error) {
+      console.debug('Failed to fetch lunchbox suggestions:', error)
+    }
+  }
 
   const fetchMealPlan = async () => {
     setIsLoading(true)
@@ -619,6 +637,7 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
         mealPlanId={mealPlan?.id || ''}
         familyMembers={familyMembers}
         existingItems={mealPlan?.lunchboxItems || []}
+        suggestions={lunchboxSuggestions}
         onRefresh={async () => {
           // Ensure meal plan exists before refreshing
           if (!mealPlan?.id) {
@@ -748,6 +767,8 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
 }
 
 function WeeklySummary({ mealPlan }: { mealPlan: MealPlan | null }) {
+  const [isSendingEmail, setIsSendingEmail] = useState(false)
+
   const meals = mealPlan?.plannedMeals || []
   const totalSlots = 14 // 7 days × 2 meals
   const plannedCount = meals.length
@@ -759,6 +780,28 @@ function WeeklySummary({ mealPlan }: { mealPlan: MealPlan | null }) {
       r.recipe.ratings.some((rating) => rating.rating === 'DOWN' && rating.member.role === 'CHILD')
     )
   ).length
+
+  const handleSendEmail = async () => {
+    if (!mealPlan?.id) return
+
+    setIsSendingEmail(true)
+    try {
+      const response = await fetch(`/api/meal-plans/${mealPlan.id}/email`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send email')
+      }
+
+      toast.success(`Email sent to ${data.recipientCount} household member${data.recipientCount === 1 ? '' : 's'}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send email')
+    } finally {
+      setIsSendingEmail(false)
+    }
+  }
 
   return (
     <div>
@@ -802,12 +845,28 @@ function WeeklySummary({ mealPlan }: { mealPlan: MealPlan | null }) {
               )}
             </div>
 
-            <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link href="/groceries">
-                <ShoppingCart className="h-4 w-4" />
-                View grocery list
-              </Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={handleSendEmail}
+                disabled={isSendingEmail || !mealPlan?.id}
+              >
+                {isSendingEmail ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Mail className="h-4 w-4" />
+                )}
+                {isSendingEmail ? 'Sending...' : 'Email summary'}
+              </Button>
+              <Button asChild variant="outline" size="sm" className="gap-2">
+                <Link href="/groceries">
+                  <ShoppingCart className="h-4 w-4" />
+                  View grocery list
+                </Link>
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

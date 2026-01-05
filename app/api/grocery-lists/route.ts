@@ -91,6 +91,7 @@ export async function POST(request: Request) {
             },
           },
         },
+        lunchboxItems: true,
       },
     })
 
@@ -148,6 +149,35 @@ export async function POST(request: Request) {
       }
     }
 
+    // Aggregate lunchbox items by name (no quantity/unit - count occurrences)
+    const lunchboxMap = new Map<
+      string,
+      { name: string; count: number; category: string }
+    >()
+
+    for (const item of mealPlan.lunchboxItems) {
+      const normalizedName = item.name.toLowerCase().trim()
+
+      // Skip pantry staples
+      const isStaple = [...stapleNames].some((staple) =>
+        normalizedName.includes(staple)
+      )
+      if (isStaple) {
+        continue
+      }
+
+      const existing = lunchboxMap.get(normalizedName)
+      if (existing) {
+        existing.count += 1
+      } else {
+        lunchboxMap.set(normalizedName, {
+          name: item.name,
+          count: 1,
+          category: categorizeLunchboxItem(item.name, item.category),
+        })
+      }
+    }
+
     // Delete existing grocery list if any
     await db.groceryList.deleteMany({
       where: { mealPlanId },
@@ -158,13 +188,24 @@ export async function POST(request: Request) {
       data: {
         mealPlanId,
         items: {
-          create: Array.from(ingredientMap.values()).map((item) => ({
-            name: item.name,
-            quantity: item.quantity,
-            unit: item.unit || null,
-            category: item.category,
-            isChecked: false,
-          })),
+          create: [
+            // Recipe ingredients
+            ...Array.from(ingredientMap.values()).map((item) => ({
+              name: item.name,
+              quantity: item.quantity,
+              unit: item.unit || null,
+              category: item.category,
+              isChecked: false,
+            })),
+            // Lunchbox items (show frequency in name if > 1)
+            ...Array.from(lunchboxMap.values()).map((item) => ({
+              name: item.count > 1 ? `${item.name} (${item.count}x)` : item.name,
+              quantity: null,
+              unit: null,
+              category: item.category,
+              isChecked: false,
+            })),
+          ],
         },
       },
       include: {
@@ -234,6 +275,11 @@ function categorizeIngredient(name: string): string {
     Beverages: [
       'juice', 'soda', 'water', 'tea', 'coffee', 'wine', 'beer',
     ],
+    Snacks: [
+      'cracker', 'chip', 'pretzel', 'popcorn', 'granola', 'bar',
+      'fruit snack', 'gummy', 'goldfish', 'cheez-it', 'ritz',
+      'cookie', 'treat', 'snack',
+    ],
   }
 
   for (const [category, keywords] of Object.entries(categories)) {
@@ -243,4 +289,24 @@ function categorizeIngredient(name: string): string {
   }
 
   return 'Other'
+}
+
+// Helper function to categorize lunchbox items
+// Uses item category if available, otherwise falls back to name-based categorization
+function categorizeLunchboxItem(name: string, category: string | null): string {
+  // Map lunchbox categories to grocery categories
+  const categoryMapping: Record<string, string> = {
+    main: 'Deli',
+    side: 'Produce',
+    fruit: 'Produce',
+    snack: 'Snacks',
+    treat: 'Snacks',
+  }
+
+  if (category && categoryMapping[category]) {
+    return categoryMapping[category]
+  }
+
+  // Fall back to name-based categorization
+  return categorizeIngredient(name)
 }

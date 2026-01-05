@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { RecipePicker } from '@/components/recipe-picker'
-import { LunchboxPicker, type LunchboxItem, type FamilyMember } from '@/components/lunchbox-picker'
+import { LunchboxPicker, type LunchboxItem, type FamilyMember, type LunchboxSuggestion } from '@/components/lunchbox-picker'
 import { DinnerHero } from './dinner-hero'
 import { LunchGrid } from './lunch-grid'
 import {
@@ -89,11 +89,28 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
   // Lunchbox picker state
   const [lunchboxPickerOpen, setLunchboxPickerOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | undefined>()
+  const [lunchboxSuggestions, setLunchboxSuggestions] = useState<LunchboxSuggestion[]>([])
 
   useEffect(() => {
     fetchMealPlan()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStartIso])
+
+  useEffect(() => {
+    fetchLunchboxSuggestions()
+  }, [])
+
+  const fetchLunchboxSuggestions = async () => {
+    try {
+      const response = await fetch('/api/lunchbox-items/suggestions')
+      if (response.ok) {
+        const data = await response.json()
+        setLunchboxSuggestions(data)
+      }
+    } catch (error) {
+      console.debug('Failed to fetch lunchbox suggestions:', error)
+    }
+  }
 
   const fetchMealPlan = async () => {
     setIsLoading(true)
@@ -430,6 +447,7 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
         mealPlanId={mealPlan?.id || ''}
         familyMembers={familyMembers}
         existingItems={mealPlan?.lunchboxItems || []}
+        suggestions={lunchboxSuggestions}
         onRefresh={async () => {
           if (!mealPlan?.id) {
             await ensureMealPlan()
