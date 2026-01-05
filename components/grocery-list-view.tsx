@@ -11,10 +11,11 @@ import {
   ChevronRight,
   CalendarDays,
   Loader2,
-  RefreshCw,
   ShoppingBag,
   Plus,
   Calendar,
+  Copy,
+  Check,
 } from 'lucide-react'
 
 interface GroceryItem {
@@ -45,6 +46,7 @@ export function GroceryListView() {
   const [newItemName, setNewItemName] = useState('')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemUnit, setNewItemUnit] = useState('')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -148,6 +150,30 @@ export function GroceryListView() {
     }
   }
 
+  const handleEdit = async (id: string, name: string) => {
+    // Optimistic update - set name and clear quantity/unit for free-form text
+    setGroceryList((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        items: prev.items.map((item) =>
+          item.id === id ? { ...item, name, quantity: null, unit: null } : item
+        ),
+      }
+    })
+
+    try {
+      await fetch(`/api/grocery-lists/items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, quantity: null, unit: null }),
+      })
+    } catch (error) {
+      console.error('Failed to edit item:', error)
+      fetchData()
+    }
+  }
+
   const handleAddItem = async () => {
     if (!newItemName.trim() || !groceryList?.id) return
 
@@ -199,6 +225,27 @@ export function GroceryListView() {
 
   const totalItems = groceryList?.items.length || 0
   const checkedItems = groceryList?.items.filter((i) => i.isChecked).length || 0
+
+  const copyAsText = async () => {
+    if (!groceryList?.items.length) return
+
+    // Build plaintext grouped by category
+    const lines: string[] = []
+    sortedCategories.forEach((category) => {
+      lines.push(`${category}:`)
+      itemsByCategory![category].forEach((item) => {
+        const qty = item.quantity ? `${item.quantity}` : ''
+        const unit = item.unit || ''
+        const prefix = qty || unit ? `${qty} ${unit}`.trim() + ' ' : ''
+        lines.push(`  ${prefix}${item.name}`)
+      })
+      lines.push('') // blank line between categories
+    })
+
+    await navigator.clipboard.writeText(lines.join('\n').trim())
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   const isCurrentWeek = () => {
     const today = getMonday(new Date())
@@ -295,12 +342,11 @@ export function GroceryListView() {
             <Button
               variant="outline"
               size="sm"
-              onClick={generateList}
-              disabled={isGenerating}
+              onClick={copyAsText}
               className="gap-2"
             >
-              <RefreshCw className={`h-4 w-4 ${isGenerating ? 'animate-spin' : ''}`} />
-              Regenerate
+              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              {copied ? 'Copied!' : 'Copy as text'}
             </Button>
           </div>
 
@@ -367,6 +413,7 @@ export function GroceryListView() {
                   items={itemsByCategory![category]}
                   onToggle={handleToggle}
                   onDelete={handleDelete}
+                  onEdit={handleEdit}
                 />
               ))}
             </div>

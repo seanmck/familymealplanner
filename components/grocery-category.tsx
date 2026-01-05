@@ -16,6 +16,7 @@ interface GroceryCategoryProps {
   items: GroceryItemData[]
   onToggle: (id: string, isChecked: boolean) => void
   onDelete: (id: string) => void
+  onEdit: (id: string, name: string) => void
 }
 
 export function GroceryCategory({
@@ -23,6 +24,7 @@ export function GroceryCategory({
   items,
   onToggle,
   onDelete,
+  onEdit,
 }: GroceryCategoryProps) {
   const checkedCount = items.filter((i) => i.isChecked).length
 
@@ -44,6 +46,7 @@ export function GroceryCategory({
               {...item}
               onToggle={onToggle}
               onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))}
         </div>
