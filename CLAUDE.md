@@ -14,8 +14,13 @@ npm run dev
 # Database management
 npm run db:start        # Start PostgreSQL container
 npm run db:stop         # Stop PostgreSQL container
-npm run db:push         # Push schema changes to database
 npm run db:studio       # Open Prisma Studio for database inspection
+
+# Schema changes (creates migration files for production deployment)
+npx prisma migrate dev --name <migration_name>
+
+# Quick schema sync (local dev only, no migration file - avoid for production)
+npm run db:push
 
 # Stop all services
 npm run stop

@@ -30,11 +30,9 @@ export function generateInviteEmailHtml({
   inviteUrl,
   emailAssetsUrl,
 }: InviteEmailParams & { emailAssetsUrl?: string }): string {
-  // Use dedicated email assets URL, or fall back to extracting from invite URL
-  // For local dev, set EMAIL_ASSETS_URL to your production URL so images load in email clients
-  const appUrl = inviteUrl.split('/invite/')[0]
-  const assetsBase = emailAssetsUrl || appUrl
-  const logoUrl = `${assetsBase}/email-logo.png`
+  // emailAssetsUrl must be a publicly accessible URL for images to display in email clients
+  // Gmail and other webmail clients cannot access localhost or data URIs
+  const logoUrl = emailAssetsUrl ? `${emailAssetsUrl}/email-logo.png` : null
 
   return `
 <!DOCTYPE html>
@@ -56,9 +54,9 @@ export function generateInviteEmailHtml({
     <div style="text-align: center; margin-bottom: 24px;">
       <table role="presentation" style="margin: 0 auto;" cellpadding="0" cellspacing="0">
         <tr>
-          <td style="vertical-align: middle; padding-right: 10px;">
+          ${logoUrl ? `<td style="vertical-align: middle; padding-right: 10px;">
             <img src="${logoUrl}" alt="FamilyTable" width="40" height="40" style="display: block; border: 0; border-radius: 12px;" />
-          </td>
+          </td>` : ''}
           <td style="vertical-align: middle;">
             <span style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 600; color: ${colors.foreground}; letter-spacing: -0.5px;">FamilyTable</span>
           </td>
