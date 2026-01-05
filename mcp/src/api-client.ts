@@ -331,7 +331,11 @@ export class ApiClient {
 
   // Grocery methods
   async getGroceryList(mealPlanId: string): Promise<GroceryList | null> {
-    return this.request(`/api/grocery-lists?mealPlanId=${encodeURIComponent(mealPlanId)}`)
+    // Always regenerate the list to ensure it reflects current meal plan
+    return this.request('/api/grocery-lists', {
+      method: 'POST',
+      body: JSON.stringify({ mealPlanId }),
+    })
   }
 
   async getPantryStaples(): Promise<PantryStaple[]> {

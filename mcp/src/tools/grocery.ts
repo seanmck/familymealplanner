@@ -5,7 +5,7 @@ export const groceryTools: Tool[] = [
   {
     name: 'get_grocery_list',
     description:
-      'Get the grocery list for a specific meal plan. Returns items organized by category with checked status.',
+      'Get the grocery list for a specific meal plan. Regenerates the list from current meals to ensure accuracy. Returns items organized by category with checked status.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -58,7 +58,7 @@ export async function handleGroceryTool(
       const groceryList = await api.getGroceryList(mealPlanId)
 
       if (!groceryList) {
-        return 'No grocery list found for this meal plan. Generate one in the app by clicking the grocery list button.'
+        return 'Could not generate grocery list. Make sure the meal plan exists and has meals added.'
       }
 
       // Organize by category
