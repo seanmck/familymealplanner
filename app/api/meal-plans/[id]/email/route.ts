@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { getAuth } from '@/lib/api-auth'
 import { sendWeeklySummaryEmail } from '@/lib/email'
 import { getEventsForDateRange, CalendarEvent } from '@/lib/google-calendar'
+import { generateGroceryList } from '@/lib/grocery'
 
 const DAYS_OF_WEEK = [
   'Monday',
@@ -184,15 +185,8 @@ export async function POST(
       }
     })
 
-    // Fetch grocery list
-    const groceryList = await db.groceryList.findUnique({
-      where: { mealPlanId },
-      include: {
-        items: {
-          orderBy: [{ category: 'asc' }, { name: 'asc' }],
-        },
-      },
-    })
+    // Generate fresh grocery list
+    const groceryList = await generateGroceryList(mealPlanId, authResult.householdId)
 
     // Filter to unchecked items and group by category
     const uncheckedItems = groceryList?.items.filter((item) => !item.isChecked) || []

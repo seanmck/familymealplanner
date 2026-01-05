@@ -42,7 +42,6 @@ export function GroceryListView() {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null)
   const [groceryList, setGroceryList] = useState<GroceryList | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isGenerating, setIsGenerating] = useState(false)
   const [newItemName, setNewItemName] = useState('')
   const [newItemQuantity, setNewItemQuantity] = useState('1')
   const [newItemUnit, setNewItemUnit] = useState('')
@@ -51,13 +50,6 @@ export function GroceryListView() {
   useEffect(() => {
     fetchData()
   }, [weekStart])
-
-  // Auto-generate grocery list when meal plan exists but list doesn't
-  useEffect(() => {
-    if (!isLoading && mealPlan?.id && !groceryList && !isGenerating) {
-      generateList()
-    }
-  }, [isLoading, mealPlan?.id, groceryList])
 
   const fetchData = async () => {
     setIsLoading(true)
@@ -70,7 +62,7 @@ export function GroceryListView() {
       setMealPlan(mpData)
 
       if (mpData?.id) {
-        // Fetch grocery list
+        // Fetch grocery list (always regenerated fresh by the API)
         const glResponse = await fetch(
           `/api/grocery-lists?mealPlanId=${mpData.id}`
         )
@@ -83,25 +75,6 @@ export function GroceryListView() {
       console.error('Failed to fetch data:', error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const generateList = async () => {
-    if (!mealPlan?.id) return
-
-    setIsGenerating(true)
-    try {
-      const response = await fetch('/api/grocery-lists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mealPlanId: mealPlan.id }),
-      })
-      const data = await response.json()
-      setGroceryList(data)
-    } catch (error) {
-      console.error('Failed to generate grocery list:', error)
-    } finally {
-      setIsGenerating(false)
     }
   }
 
@@ -310,18 +283,6 @@ export function GroceryListView() {
           </h2>
           <p className="text-muted-foreground text-center max-w-sm">
             Head over to the Planner to add meals first, then come back to generate your grocery list.
-          </p>
-        </div>
-      ) : !groceryList ? (
-        <div className="flex flex-col items-center justify-center py-16 px-4">
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 mb-6">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          </div>
-          <h2 className="text-xl font-semibold text-center mb-2">
-            Generating your grocery list
-          </h2>
-          <p className="text-muted-foreground text-center max-w-sm">
-            Combining ingredients from your planned meals...
           </p>
         </div>
       ) : (
