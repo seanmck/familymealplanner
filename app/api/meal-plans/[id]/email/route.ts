@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuth } from '@/lib/api-auth'
 import { sendWeeklySummaryEmail } from '@/lib/email'
+import { getEventsForDateRange, CalendarEvent } from '@/lib/google-calendar'
 
 const DAYS_OF_WEEK = [
   'Monday',
@@ -61,6 +62,7 @@ export async function POST(
               },
               orderBy: { sortOrder: 'asc' },
             },
+            familyMember: true,
           },
         },
       },
@@ -88,14 +90,67 @@ export async function POST(
       )
     }
 
-    // Build dinner data - only shared family dinners (familyMemberId is null)
+    // Fetch calendar events for the week (gracefully returns empty if not connected)
+    const weekEnd = new Date(mealPlan.weekStartDate)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+    const calendarEvents = await getEventsForDateRange(
+      authResult.householdId,
+      mealPlan.weekStartDate,
+      weekEnd
+    )
+
+    // Helper to get the date string (YYYY-MM-DD) for a day index
+    const getDateStringForDay = (dayIndex: number): string => {
+      const date = new Date(mealPlan.weekStartDate)
+      // Use UTC methods to avoid timezone shifts
+      date.setUTCDate(date.getUTCDate() + dayIndex)
+      return date.toISOString().slice(0, 10) // "YYYY-MM-DD"
+    }
+
+    // Helper to get events for a specific day by comparing date strings
+    const getEventsForDay = (dayIndex: number): CalendarEvent[] => {
+      const targetDate = getDateStringForDay(dayIndex)
+
+      return calendarEvents.filter((event) => {
+        // For all-day events, start is "YYYY-MM-DD"
+        // For timed events, start is "YYYY-MM-DDTHH:MM:SS..." - extract date portion
+        const eventDate = event.start.slice(0, 10)
+        return eventDate === targetDate
+      })
+    }
+
+    // Build dinner data - shared family dinners plus events and alternates
     const dinners = DAYS_OF_WEEK.map((day, index) => {
+      // Main shared dinner (familyMemberId is null)
       const meal = mealPlan.plannedMeals.find(
         (m) =>
           m.dayOfWeek === index &&
           m.mealType === 'DINNER' &&
           m.familyMemberId === null
       )
+
+      // Alternate dinners for this day (familyMemberId is not null)
+      const alternateMeals = mealPlan.plannedMeals
+        .filter(
+          (m) =>
+            m.dayOfWeek === index &&
+            m.mealType === 'DINNER' &&
+            m.familyMemberId !== null
+        )
+        .map((m) => {
+          const mainRecipe = m.recipes.find((r) => r.role === 'MAIN')?.recipe
+          return {
+            memberName: m.familyMember?.name || 'Unknown',
+            title: mainRecipe?.title || m.placeholderTitle || 'Alternate meal',
+          }
+        })
+
+      // Calendar events for this day
+      const dayEvents = getEventsForDay(index).map((e) => ({
+        summary: e.summary,
+        time: e.allDay ? 'All day' : new Date(e.start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        allDay: e.allDay,
+      }))
 
       if (!meal) {
         return {
@@ -106,6 +161,8 @@ export async function POST(
           description: null,
           sourceUrl: null,
           sides: [],
+          events: dayEvents.length > 0 ? dayEvents : undefined,
+          alternateMeals: alternateMeals.length > 0 ? alternateMeals : undefined,
         }
       }
 
@@ -122,6 +179,8 @@ export async function POST(
         description: mainRecipe?.description || null,
         sourceUrl: mainRecipe?.sourceUrl || null,
         sides: sideRecipes,
+        events: dayEvents.length > 0 ? dayEvents : undefined,
+        alternateMeals: alternateMeals.length > 0 ? alternateMeals : undefined,
       }
     })
 

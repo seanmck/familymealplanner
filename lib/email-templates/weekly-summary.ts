@@ -1,3 +1,14 @@
+interface CalendarEventItem {
+  summary: string
+  time: string
+  allDay: boolean
+}
+
+interface AlternateMealItem {
+  memberName: string
+  title: string
+}
+
 interface DinnerItem {
   day: string
   date: string
@@ -6,6 +17,8 @@ interface DinnerItem {
   description: string | null
   sourceUrl: string | null
   sides: string[]
+  events?: CalendarEventItem[]
+  alternateMeals?: AlternateMealItem[]
 }
 
 interface GroceryCategory {
@@ -87,6 +100,29 @@ function generateDinnerRow(dinner: DinnerItem): string {
       ? `<p style="margin: 6px 0 0 0;"><a href="${dinner.sourceUrl}" style="font-size: 12px; color: ${colors.primary}; text-decoration: none;">View original recipe &rarr;</a></p>`
       : ''
 
+  // Calendar events - show up to 3 event names, then "+X more"
+  let eventsHtml = ''
+  if (dinner.events && dinner.events.length > 0) {
+    const maxEvents = 3
+    const displayEvents = dinner.events.slice(0, maxEvents)
+    const remainingCount = dinner.events.length - maxEvents
+    const eventNames = displayEvents.map((e) => e.summary).join(', ')
+    const moreText = remainingCount > 0 ? ` +${remainingCount} more` : ''
+    eventsHtml = `<p style="font-size: 11px; color: ${colors.mutedLight}; margin: 2px 0 0 0;">&#128197; ${eventNames}${moreText}</p>`
+  }
+
+  // Alternate meals - show member name: meal title
+  let alternateMealsHtml = ''
+  if (dinner.alternateMeals && dinner.alternateMeals.length > 0) {
+    const altMealsList = dinner.alternateMeals
+      .map(
+        (alt) =>
+          `<span style="font-weight: 500;">${alt.memberName}:</span> ${alt.title}`
+      )
+      .join('<br />')
+    alternateMealsHtml = `<p style="font-size: 12px; color: ${colors.muted}; margin: 8px 0 0 0; padding-top: 6px; border-top: 1px dashed ${colors.border};">${altMealsList}</p>`
+  }
+
   return `
     <tr>
       <td style="padding: 14px 0; border-bottom: 1px solid ${colors.border};">
@@ -97,10 +133,12 @@ function generateDinnerRow(dinner: DinnerItem): string {
               <p style="font-size: 12px; font-weight: 600; color: ${colors.primary}; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 4px 0;">
                 ${dinner.day} <span style="color: ${colors.muted}; font-weight: 400;">${dinner.date}</span>
               </p>
+              ${eventsHtml}
               <p style="${titleStyle}">${dinner.title}</p>
               ${sidesHtml}
               ${descriptionHtml}
               ${sourceHtml}
+              ${alternateMealsHtml}
             </td>
           </tr>
         </table>
@@ -246,10 +284,30 @@ export function generateWeeklySummaryEmailText({
 }: WeeklySummaryEmailParams): string {
   const dinnerLines = dinners
     .map((d) => {
+      // Calendar events
+      let eventsText = ''
+      if (d.events && d.events.length > 0) {
+        const maxEvents = 3
+        const displayEvents = d.events.slice(0, maxEvents)
+        const remainingCount = d.events.length - maxEvents
+        const eventNames = displayEvents.map((e) => e.summary).join(', ')
+        const moreText = remainingCount > 0 ? ` +${remainingCount} more` : ''
+        eventsText = `\n    📅 ${eventNames}${moreText}`
+      }
+
       const sidesText = d.sides.length > 0 ? `\n    with ${d.sides.join(', ')}` : ''
       const descText = d.description ? `\n    ${d.description.substring(0, 160)}${d.description.length > 160 ? '...' : ''}` : ''
       const sourceText = d.sourceUrl ? `\n    Recipe: ${d.sourceUrl}` : ''
-      return `${d.day} ${d.date}: ${d.title}${sidesText}${descText}${sourceText}`
+
+      // Alternate meals
+      let altMealsText = ''
+      if (d.alternateMeals && d.alternateMeals.length > 0) {
+        altMealsText = d.alternateMeals
+          .map((alt) => `\n    ${alt.memberName}: ${alt.title}`)
+          .join('')
+      }
+
+      return `${d.day} ${d.date}: ${d.title}${eventsText}${sidesText}${descText}${sourceText}${altMealsText}`
     })
     .join('\n\n')
 
