@@ -2,13 +2,14 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Sparkles, AlertTriangle, Utensils } from 'lucide-react'
+import { X, Plus, Sparkles, AlertTriangle, Utensils, ExternalLink } from 'lucide-react'
 
 interface Recipe {
   id: string
   title: string
   tags: string[]
   type: 'MAIN' | 'SIDE'
+  sourceUrl?: string | null
   ratings: Array<{
     rating: 'UP' | 'DOWN' | 'NEUTRAL'
     member: { name: string; role: 'ADULT' | 'CHILD' }
@@ -128,8 +129,11 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
         {/* Dinner: Recipe display */}
         {!isLunch && hasMainOrPlaceholder && (
           <div className="space-y-1.5">
-            <p className="text-sm font-medium leading-tight text-foreground">
+            <p className="text-sm font-medium leading-tight text-foreground flex items-center gap-1">
               {mainRecipe?.title || meal?.placeholderTitle}
+              {mainRecipe?.sourceUrl && (
+                <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+              )}
             </p>
 
             {/* Sides display */}

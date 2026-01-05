@@ -23,6 +23,7 @@ import {
   Minus,
   AlertTriangle,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react'
 
 interface Recipe {
@@ -30,6 +31,7 @@ interface Recipe {
   title: string
   description: string | null
   imageUrl: string | null
+  sourceUrl: string | null
   prepTimeMinutes: number | null
   cookTimeMinutes: number | null
   servings: number
@@ -155,6 +157,18 @@ export function DinnerHero({
                     </div>
                     {mainRecipe?.description && (
                       <p className="text-muted-foreground">{mainRecipe.description}</p>
+                    )}
+                    {mainRecipe?.sourceUrl && (
+                      <a
+                        href={mainRecipe.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        View original recipe
+                      </a>
                     )}
                   </div>
 

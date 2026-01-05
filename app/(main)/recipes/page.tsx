@@ -116,6 +116,7 @@ export default async function RecipesPage({ searchParams }: Props) {
               servings={recipe.servings}
               tags={recipe.tags}
               ratings={recipe.ratings}
+              sourceUrl={recipe.sourceUrl}
             />
           ))}
         </div>

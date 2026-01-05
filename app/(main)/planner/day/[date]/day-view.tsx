@@ -24,6 +24,7 @@ interface Recipe {
   title: string
   description: string | null
   imageUrl: string | null
+  sourceUrl: string | null
   prepTimeMinutes: number | null
   cookTimeMinutes: number | null
   servings: number

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Users, ThumbsUp, ThumbsDown, Sparkles, AlertTriangle } from 'lucide-react'
+import { Clock, Users, ThumbsUp, ThumbsDown, Sparkles, AlertTriangle, ExternalLink } from 'lucide-react'
 
 interface RecipeRating {
   rating: 'UP' | 'DOWN' | 'NEUTRAL'
@@ -17,6 +17,7 @@ interface RecipeCardProps {
   servings: number
   tags: string[]
   ratings?: RecipeRating[]
+  sourceUrl?: string | null
 }
 
 export function RecipeCard({
@@ -28,8 +29,10 @@ export function RecipeCard({
   servings,
   tags,
   ratings = [],
+  sourceUrl,
 }: RecipeCardProps) {
   const totalTime = (prepTimeMinutes || 0) + (cookTimeMinutes || 0) || null
+  const sourceHostname = sourceUrl ? new URL(sourceUrl).hostname.replace(/^www\./, '') : null
 
   const upVotes = ratings.filter((r) => r.rating === 'UP').length
   const downVotes = ratings.filter((r) => r.rating === 'DOWN').length
@@ -97,6 +100,12 @@ export function RecipeCard({
                   <ThumbsDown className="h-3.5 w-3.5" />
                   {downVotes}
                 </span>
+              </span>
+            )}
+            {sourceHostname && (
+              <span className="flex items-center gap-1 text-primary/70">
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="text-xs truncate max-w-24">{sourceHostname}</span>
               </span>
             )}
           </div>

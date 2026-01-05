@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+import { ExternalLink } from 'lucide-react'
 import { IngredientSearchInput } from '@/components/ingredient-search-input'
 import { SuggestionsSection } from '@/components/suggestions-section'
 import type { SuggestionsResponse } from '@/lib/suggestions/types'
@@ -19,6 +20,7 @@ interface Recipe {
   title: string
   tags: string[]
   type: 'MAIN' | 'SIDE'
+  sourceUrl?: string | null
   ratings: Array<{
     rating: 'UP' | 'DOWN' | 'NEUTRAL'
     member: { name: string; role: 'ADULT' | 'CHILD' }
@@ -206,7 +208,12 @@ function RecipePickerContent({
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium">{recipe.title}</p>
+                      <p className="font-medium flex items-center gap-1.5">
+                        {recipe.title}
+                        {recipe.sourceUrl && (
+                          <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {/* Show recipe type badge when not filtering */}
                         {!filterType && (
