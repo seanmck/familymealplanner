@@ -36,6 +36,8 @@ interface LunchboxItem {
   dayOfWeek: number
   category: string | null
   name: string
+  wasConsumed?: boolean
+  consumptionNote?: string | null
   familyMemberId: string
   familyMember: {
     id: string
@@ -171,15 +173,28 @@ export function LunchGrid({
                         onClick={() => onMemberClick(member.id)}
                       >
                         {Object.entries(groupedItems).map(([category, categoryItems]) => (
-                          <div key={category} className="flex flex-wrap gap-1">
-                            {categoryItems.map((item) => (
-                              <Badge
-                                key={item.id}
-                                variant="secondary"
-                                className={`text-xs ${CATEGORY_COLORS[category] || 'bg-muted'}`}
-                              >
-                                {item.name}
-                              </Badge>
+                          <div key={category} className="space-y-1">
+                            <div className="flex flex-wrap gap-1">
+                              {categoryItems.map((item) => {
+                                const notConsumed = item.wasConsumed === false
+                                return (
+                                  <Badge
+                                    key={item.id}
+                                    variant="secondary"
+                                    className={`text-xs ${CATEGORY_COLORS[category] || 'bg-muted'} ${
+                                      notConsumed ? 'line-through opacity-60' : ''
+                                    }`}
+                                  >
+                                    {item.name}
+                                  </Badge>
+                                )
+                              })}
+                            </div>
+                            {/* Show consumption notes for items that weren't eaten */}
+                            {categoryItems.filter(i => i.wasConsumed === false && i.consumptionNote).map((item) => (
+                              <p key={`${item.id}-note`} className="text-xs text-muted-foreground italic ml-1">
+                                {item.name}: {item.consumptionNote}
+                              </p>
                             ))}
                           </div>
                         ))}

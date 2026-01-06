@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ThumbsUp, ThumbsDown, Meh } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface FamilyMember {
@@ -91,14 +92,18 @@ export function RatingButtons({
         <SelectContent>
           {familyMembers.map((member) => (
             <SelectItem key={member.id} value={member.id}>
-              {member.name} {member.role === 'CHILD' ? '(Kid)' : ''}
-              {getCurrentRating(member.id) && (
-                <span className="ml-2">
-                  {getCurrentRating(member.id) === 'UP' && '👍'}
-                  {getCurrentRating(member.id) === 'DOWN' && '👎'}
-                  {getCurrentRating(member.id) === 'NEUTRAL' && '😐'}
-                </span>
-              )}
+              <span className="flex items-center gap-2">
+                {member.name} {member.role === 'CHILD' ? '(Kid)' : ''}
+                {getCurrentRating(member.id) === 'UP' && (
+                  <ThumbsUp className="h-3.5 w-3.5 text-green-600" />
+                )}
+                {getCurrentRating(member.id) === 'DOWN' && (
+                  <ThumbsDown className="h-3.5 w-3.5 text-red-500" />
+                )}
+                {getCurrentRating(member.id) === 'NEUTRAL' && (
+                  <Meh className="h-3.5 w-3.5 text-amber-500" />
+                )}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>
@@ -110,25 +115,28 @@ export function RatingButtons({
             variant={currentRating === 'UP' ? 'default' : 'outline'}
             onClick={() => handleRate('UP')}
             disabled={isSubmitting}
-            className="flex-1"
+            className={`flex-1 gap-2 ${currentRating === 'UP' ? 'bg-green-500 hover:bg-green-600' : ''}`}
           >
-            👍 Loved it
+            <ThumbsUp className="h-4 w-4" />
+            Loved it
           </Button>
           <Button
             variant={currentRating === 'NEUTRAL' ? 'default' : 'outline'}
             onClick={() => handleRate('NEUTRAL')}
             disabled={isSubmitting}
-            className="flex-1"
+            className={`flex-1 gap-2 ${currentRating === 'NEUTRAL' ? 'bg-amber-500 hover:bg-amber-600' : ''}`}
           >
-            😐 It&apos;s OK
+            <Meh className="h-4 w-4" />
+            It&apos;s OK
           </Button>
           <Button
             variant={currentRating === 'DOWN' ? 'default' : 'outline'}
             onClick={() => handleRate('DOWN')}
             disabled={isSubmitting}
-            className="flex-1"
+            className={`flex-1 gap-2 ${currentRating === 'DOWN' ? 'bg-red-500 hover:bg-red-600' : ''}`}
           >
-            👎 Nope
+            <ThumbsDown className="h-4 w-4" />
+            Nope
           </Button>
         </div>
       )}

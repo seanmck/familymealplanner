@@ -38,6 +38,10 @@ export async function GET(request: Request) {
               orderBy: { sortOrder: 'asc' },
             },
             familyMember: true,
+            feedback: {
+              include: { familyMember: true },
+              orderBy: { createdAt: 'asc' },
+            },
           },
         },
         lunchboxItems: {
@@ -111,6 +115,10 @@ export async function POST(request: Request) {
               orderBy: { sortOrder: 'asc' },
             },
             familyMember: true,
+            feedback: {
+              include: { familyMember: true },
+              orderBy: { createdAt: 'asc' },
+            },
           },
         },
         lunchboxItems: {

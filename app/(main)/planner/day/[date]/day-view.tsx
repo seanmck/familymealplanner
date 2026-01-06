@@ -17,7 +17,7 @@ import {
   addDays,
   DAYS_OF_WEEK,
 } from '@/lib/utils/dates'
-import { ChevronLeft, ChevronRight, CalendarDays, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, Loader2, ClipboardCheck } from 'lucide-react'
 
 interface Recipe {
   id: string
@@ -344,9 +344,11 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
   const goToPrevDay = () => navigateToDay(addDays(currentDate, -1))
   const goToNextDay = () => navigateToDay(addDays(currentDate, 1))
 
-  // Check if this is today
+  // Check if this is today or past
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
   const isToday = formatDateString(currentDate) === formatDateString(today)
+  const isPastOrToday = currentDate <= today
 
   return (
     <div className="space-y-8">
@@ -387,12 +389,23 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
           </Button>
         </div>
 
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/planner" className="gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Back to week
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Show Review Day button for today or past days with content */}
+          {isPastOrToday && (getDinnerMeal() || getLunchboxItems().length > 0) && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/planner/day/${date}/review`} className="gap-2">
+                <ClipboardCheck className="h-4 w-4" />
+                Review Day
+              </Link>
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/planner" className="gap-2">
+              <CalendarDays className="h-4 w-4" />
+              Back to week
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Content */}

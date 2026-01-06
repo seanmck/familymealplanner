@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { ThumbsUp, ThumbsDown, Meh } from 'lucide-react'
 import { DeleteRecipeButton } from './delete-button'
 import { RatingButtons } from '@/components/rating-buttons'
 
@@ -168,11 +169,15 @@ export default async function RecipeDetailPage({ params }: Props) {
               <ul className="space-y-2">
                 {recipe.ratings.map((rating) => (
                   <li key={rating.id} className="flex items-center gap-2">
-                    <span>
-                      {rating.rating === 'UP' && '👍'}
-                      {rating.rating === 'DOWN' && '👎'}
-                      {rating.rating === 'NEUTRAL' && '😐'}
-                    </span>
+                    {rating.rating === 'UP' && (
+                      <ThumbsUp className="h-4 w-4 text-green-600" />
+                    )}
+                    {rating.rating === 'DOWN' && (
+                      <ThumbsDown className="h-4 w-4 text-red-500" />
+                    )}
+                    {rating.rating === 'NEUTRAL' && (
+                      <Meh className="h-4 w-4 text-amber-500" />
+                    )}
                     <span>{rating.member.name}</span>
                     {rating.member.role === 'CHILD' && (
                       <Badge variant="outline" className="text-xs">

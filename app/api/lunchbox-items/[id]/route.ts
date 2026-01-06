@@ -14,7 +14,7 @@ export async function PUT(
 
     const { id } = await params
     const body = await request.json()
-    const { category, name, notes, sortOrder } = body
+    const { category, name, notes, sortOrder, wasConsumed, consumptionNote } = body
 
     // Verify lunchbox item belongs to household
     const existing = await db.lunchboxItem.findFirst({
@@ -38,6 +38,8 @@ export async function PUT(
         name: name ?? existing.name,
         notes: notes !== undefined ? notes : existing.notes,
         sortOrder: sortOrder ?? existing.sortOrder,
+        wasConsumed: wasConsumed !== undefined ? wasConsumed : existing.wasConsumed,
+        consumptionNote: consumptionNote !== undefined ? consumptionNote : existing.consumptionNote,
       },
       include: {
         familyMember: true,

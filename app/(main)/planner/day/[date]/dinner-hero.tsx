@@ -24,6 +24,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ExternalLink,
+  Package,
+  MessageSquare,
 } from 'lucide-react'
 
 interface Recipe {
@@ -49,12 +51,22 @@ interface PlannedMealRecipe {
   recipe: Recipe
 }
 
+interface MealFeedback {
+  id: string
+  content: string
+  familyMemberId: string | null
+  familyMember: { id: string; name: string; role: 'ADULT' | 'CHILD' } | null
+}
+
 interface PlannedMeal {
   id: string
   dayOfWeek: number
   mealType: 'DINNER' | 'LUNCH'
   placeholderTitle: string | null
+  hasLeftovers?: boolean
+  leftoversQuantity?: string | null
   recipes: PlannedMealRecipe[]
+  feedback?: MealFeedback[]
   familyMemberId?: string | null
   familyMember?: {
     id: string
@@ -154,6 +166,12 @@ export function DinnerHero({
                           Kid Alert
                         </Badge>
                       )}
+                      {meal?.hasLeftovers && (
+                        <Badge variant="secondary" className="gap-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                          <Package className="h-3 w-3" />
+                          Leftovers{meal.leftoversQuantity ? `: ${meal.leftoversQuantity}` : ''}
+                        </Badge>
+                      )}
                     </div>
                     {mainRecipe?.description && (
                       <p className="text-muted-foreground">{mainRecipe.description}</p>
@@ -248,6 +266,29 @@ export function DinnerHero({
                       </div>
                     )
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Feedback from Review */}
+            {meal?.feedback && meal.feedback.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Notes from Review
+                </h3>
+                <div className="space-y-1.5">
+                  {meal.feedback.map((fb) => (
+                    <div
+                      key={fb.id}
+                      className="text-sm p-2 bg-muted/50 rounded-md"
+                    >
+                      <span className="text-muted-foreground">
+                        {fb.familyMember ? `${fb.familyMember.name}: ` : ''}
+                      </span>
+                      {fb.content}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

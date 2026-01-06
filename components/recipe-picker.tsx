@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, ThumbsUp } from 'lucide-react'
 import { IngredientSearchInput } from '@/components/ingredient-search-input'
 import { SuggestionsSection } from '@/components/suggestions-section'
 import type { SuggestionsResponse } from '@/lib/suggestions/types'
@@ -247,8 +247,9 @@ function RecipePickerContent({
                         </Badge>
                       )}
                       {upVotes > 0 && (
-                        <span className="text-sm text-muted-foreground">
-                          👍 {upVotes}
+                        <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <ThumbsUp className="h-3.5 w-3.5 text-green-600" />
+                          {upVotes}
                         </span>
                       )}
                     </div>

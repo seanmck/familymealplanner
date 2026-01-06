@@ -7,6 +7,7 @@ import {
   ShoppingCart,
   Users,
   ThumbsUp,
+  ThumbsDown,
   Sparkles,
   ArrowRight,
   Check,
@@ -256,9 +257,13 @@ export default function HomePage() {
                       <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-2xl">🌮</div>
                       <div className="flex-1">
                         <p className="font-medium">Chicken Tacos</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="text-green-600">👍 4</span>
-                          <span className="text-red-500">👎 0</span>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1 text-green-600">
+                            <ThumbsUp className="h-3.5 w-3.5" /> 4
+                          </span>
+                          <span className="flex items-center gap-1 text-red-500">
+                            <ThumbsDown className="h-3.5 w-3.5" /> 0
+                          </span>
                         </div>
                       </div>
                       <div className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">Family favorite</div>
@@ -267,9 +272,13 @@ export default function HomePage() {
                       <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center text-2xl">🍝</div>
                       <div className="flex-1">
                         <p className="font-medium">Spaghetti Bolognese</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="text-green-600">👍 3</span>
-                          <span className="text-red-500">👎 1</span>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          <span className="flex items-center gap-1 text-green-600">
+                            <ThumbsUp className="h-3.5 w-3.5" /> 3
+                          </span>
+                          <span className="flex items-center gap-1 text-red-500">
+                            <ThumbsDown className="h-3.5 w-3.5" /> 1
+                          </span>
                         </div>
                       </div>
                       <div className="text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700">Picky alert</div>

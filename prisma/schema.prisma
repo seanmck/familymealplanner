@@ -231,6 +231,7 @@ model FamilyMember {
   ratings       RecipeRating[]
   plannedMeals  PlannedMeal[]
   lunchboxItems LunchboxItem[]
+  feedback      MealFeedback[]
 
   // Optional link to User account (for household members who have logged in via invite)
   userId String? @unique
@@ -298,12 +299,17 @@ model PlannedMeal {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
+  // Day in Review fields
+  hasLeftovers      Boolean @default(false)
+  leftoversQuantity String? // Optional: "half", "2 servings", etc.
+
   // Relations
   mealPlanId     String
   mealPlan       MealPlan            @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
   recipes        PlannedMealRecipe[]
   familyMemberId String?             // NULL = shared meal for whole family, set = personal meal
   familyMember   FamilyMember?       @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+  feedback       MealFeedback[]
 
   @@unique([mealPlanId, dayOfWeek, mealType, familyMemberId])
   @@index([mealPlanId])
@@ -419,6 +425,10 @@ model LunchboxItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Day in Review - consumption tracking
+  wasConsumed     Boolean @default(true) // Default: everything eaten
+  consumptionNote String? @db.Text       // Why not consumed: "Oliver doesn't like cold pasta"
+
   // Relations
   mealPlanId     String
   mealPlan       MealPlan     @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
@@ -426,5 +436,25 @@ model LunchboxItem {
   familyMember   FamilyMember @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
 
   @@index([mealPlanId, familyMemberId, dayOfWeek])
+  @@index([familyMemberId])
+}
+
+// ============================================================================
+// Day in Review - Meal Feedback
+// ============================================================================
+
+model MealFeedback {
+  id        String   @id @default(cuid())
+  content   String   @db.Text // Free-form text feedback
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  plannedMealId  String
+  plannedMeal    PlannedMeal   @relation(fields: [plannedMealId], references: [id], onDelete: Cascade)
+  familyMemberId String?       // NULL = global feedback, set = per-member feedback
+  familyMember   FamilyMember? @relation(fields: [familyMemberId], references: [id], onDelete: Cascade)
+
+  @@index([plannedMealId])
   @@index([familyMemberId])
 }
