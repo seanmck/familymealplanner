@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
-// PATCH - Update a grocery item (e.g., check/uncheck)
+// PATCH - Update a grocery item (e.g., check/uncheck, edit name)
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -16,7 +16,7 @@ export async function PATCH(
     const { id } = await params
     const updates = await request.json()
 
-    // Verify item belongs to household
+    // Verify item belongs to household and get current state for tracking
     const item = await db.groceryItem.findFirst({
       where: {
         id,
@@ -25,6 +25,13 @@ export async function PATCH(
             householdId: session.user.householdId,
           },
         },
+      },
+      select: {
+        id: true,
+        name: true,
+        sourceKey: true,
+        groceryListId: true,
+        isChecked: true,
       },
     })
 
@@ -35,6 +42,39 @@ export async function PATCH(
       )
     }
 
+    // Track name edits in editedItems (only if item has sourceKey)
+    if (updates.name && updates.name !== item.name && item.sourceKey) {
+      const groceryList = await db.groceryList.findUnique({
+        where: { id: item.groceryListId },
+        select: { editedItems: true },
+      })
+      const existingEdits = (groceryList?.editedItems as Record<string, string>) || {}
+      existingEdits[item.sourceKey] = updates.name
+      await db.groceryList.update({
+        where: { id: item.groceryListId },
+        data: { editedItems: existingEdits },
+      })
+    }
+
+    // Track checked status changes in checkedSourceKeys (only if item has sourceKey)
+    if (typeof updates.isChecked === 'boolean' && updates.isChecked !== item.isChecked && item.sourceKey) {
+      const groceryList = await db.groceryList.findUnique({
+        where: { id: item.groceryListId },
+        select: { checkedSourceKeys: true },
+      })
+      const checkedKeys = new Set(groceryList?.checkedSourceKeys || [])
+      if (updates.isChecked) {
+        checkedKeys.add(item.sourceKey)
+      } else {
+        checkedKeys.delete(item.sourceKey)
+      }
+      await db.groceryList.update({
+        where: { id: item.groceryListId },
+        data: { checkedSourceKeys: Array.from(checkedKeys) },
+      })
+    }
+
+    // Update the item itself
     const updatedItem = await db.groceryItem.update({
       where: { id },
       data: updates,
@@ -63,7 +103,7 @@ export async function DELETE(
 
     const { id } = await params
 
-    // Verify item belongs to household and get name + groceryListId
+    // Verify item belongs to household and get sourceKey + groceryListId
     const item = await db.groceryItem.findFirst({
       where: {
         id,
@@ -76,6 +116,7 @@ export async function DELETE(
       select: {
         id: true,
         name: true,
+        sourceKey: true,
         groceryListId: true,
       },
     })
@@ -87,14 +128,38 @@ export async function DELETE(
       )
     }
 
-    // Add normalized item name to excluded list (so it doesn't reappear on regeneration)
-    const normalizedName = item.name.toLowerCase().trim()
+    // Use sourceKey for exclusion tracking (fall back to name-based key for legacy items)
+    let keyToExclude = item.sourceKey
+    if (!keyToExclude) {
+      // Legacy item without sourceKey - generate one based on name
+      const nameWithoutCount = item.name.replace(/ \(\d+x\)$/i, '')
+      const normalizedName = nameWithoutCount.toLowerCase().trim()
+      keyToExclude = `ingredient:${normalizedName}-`
+    }
+
+    // Fetch current grocery list to update editedItems and checkedSourceKeys
+    const groceryList = await db.groceryList.findUnique({
+      where: { id: item.groceryListId },
+      select: { editedItems: true, checkedSourceKeys: true },
+    })
+
+    // Clean up editedItems (remove entry for this sourceKey)
+    const currentEdits = (groceryList?.editedItems as Record<string, string>) || {}
+    const updatedEdits = { ...currentEdits }
+    delete updatedEdits[keyToExclude]
+
+    // Clean up checkedSourceKeys (remove this sourceKey)
+    const updatedChecked = (groceryList?.checkedSourceKeys || []).filter(
+      (k) => k !== keyToExclude
+    )
+
+    // Update grocery list with exclusion and cleanup
     await db.groceryList.update({
       where: { id: item.groceryListId },
       data: {
-        excludedItems: {
-          push: normalizedName,
-        },
+        excludedItems: { push: keyToExclude },
+        editedItems: updatedEdits,
+        checkedSourceKeys: updatedChecked,
       },
     })
 

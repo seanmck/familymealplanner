@@ -7,24 +7,31 @@ interface GroceryItem {
   unit: string | null
   category: string | null
   isChecked: boolean
+  sourceKey: string | null
 }
 
 export interface GroceryList {
   id: string
   mealPlanId: string
   excludedItems: string[]
+  editedItems: Record<string, string>
+  checkedSourceKeys: string[]
   items: GroceryItem[]
 }
 
 /**
  * Generates a fresh grocery list from the current meal plan.
  * Always regenerates to ensure accuracy - replaces any existing list.
- * @param excludedItems - Normalized item names to exclude (user deletions from previous regenerations)
+ * @param excludedItems - sourceKeys of items deleted by user (persist across regeneration)
+ * @param editedItems - Map of sourceKey -> edited name (persist edits across regeneration)
+ * @param checkedSourceKeys - sourceKeys of checked items (persist across regeneration)
  */
 export async function generateGroceryList(
   mealPlanId: string,
   householdId: string,
-  excludedItems: string[] = []
+  excludedItems: string[] = [],
+  editedItems: Record<string, string> = {},
+  checkedSourceKeys: string[] = []
 ): Promise<GroceryList | null> {
   // Fetch meal plan with all recipes and ingredients
   const mealPlan = await db.mealPlan.findFirst({
@@ -68,7 +75,7 @@ export async function generateGroceryList(
   // Aggregate ingredients from all recipes (mains and sides)
   const ingredientMap = new Map<
     string,
-    { name: string; quantity: number; unit: string; category: string }
+    { name: string; quantity: number; unit: string; category: string; sourceKey: string }
   >()
 
   for (const meal of mealPlan.plannedMeals) {
@@ -85,24 +92,26 @@ export async function generateGroceryList(
           continue
         }
 
-        // Skip user-excluded items
-        if (excludedSet.has(normalizedName)) {
+        const unitStr = ingredient.unit?.toLowerCase().trim() || ''
+        const sourceKey = `ingredient:${normalizedName}-${unitStr}`
+
+        // Skip user-excluded items (by sourceKey)
+        if (excludedSet.has(sourceKey)) {
           continue
         }
 
-        const unitStr = ingredient.unit?.toLowerCase().trim() || ''
-        const key = `${ingredient.name.toLowerCase().trim()}-${unitStr}`
-        const existing = ingredientMap.get(key)
+        const existing = ingredientMap.get(sourceKey)
         const qty = ingredient.quantity ? Number(ingredient.quantity) : 1
 
         if (existing) {
           existing.quantity += qty
         } else {
-          ingredientMap.set(key, {
+          ingredientMap.set(sourceKey, {
             name: ingredient.name,
             quantity: qty,
             unit: ingredient.unit || '',
             category: categorizeIngredient(ingredient.name),
+            sourceKey,
           })
         }
       }
@@ -112,7 +121,7 @@ export async function generateGroceryList(
   // Aggregate lunchbox items by name (no quantity/unit - count occurrences)
   const lunchboxMap = new Map<
     string,
-    { name: string; count: number; category: string }
+    { name: string; count: number; category: string; sourceKey: string }
   >()
 
   for (const item of mealPlan.lunchboxItems) {
@@ -126,51 +135,64 @@ export async function generateGroceryList(
       continue
     }
 
-    // Skip user-excluded items
-    if (excludedSet.has(normalizedName)) {
+    const sourceKey = `lunchbox:${normalizedName}`
+
+    // Skip user-excluded items (by sourceKey)
+    if (excludedSet.has(sourceKey)) {
       continue
     }
 
-    const existing = lunchboxMap.get(normalizedName)
+    const existing = lunchboxMap.get(sourceKey)
     if (existing) {
       existing.count += 1
     } else {
-      lunchboxMap.set(normalizedName, {
+      lunchboxMap.set(sourceKey, {
         name: item.name,
         count: 1,
         category: categorizeLunchboxItem(item.name, item.category),
+        sourceKey,
       })
     }
   }
+
+  // Create set of checked sourceKeys for quick lookup
+  const checkedSet = new Set(checkedSourceKeys)
 
   // Delete existing grocery list if any
   await db.groceryList.deleteMany({
     where: { mealPlanId },
   })
 
-  // Create new grocery list with items (preserving excluded items)
+  // Create new grocery list with items (preserving excluded items, edits, and checked status)
   const groceryList = await db.groceryList.create({
     data: {
       mealPlanId,
       excludedItems,
+      editedItems,
+      checkedSourceKeys,
       items: {
         create: [
           // Recipe ingredients
           ...Array.from(ingredientMap.values()).map((item) => ({
-            name: item.name,
+            name: editedItems[item.sourceKey] ?? item.name,
             quantity: item.quantity,
             unit: item.unit || null,
             category: item.category,
-            isChecked: false,
+            isChecked: checkedSet.has(item.sourceKey),
+            sourceKey: item.sourceKey,
           })),
           // Lunchbox items (show frequency in name if > 1)
-          ...Array.from(lunchboxMap.values()).map((item) => ({
-            name: item.count > 1 ? `${item.name} (${item.count}x)` : item.name,
-            quantity: null,
-            unit: null,
-            category: item.category,
-            isChecked: false,
-          })),
+          ...Array.from(lunchboxMap.values()).map((item) => {
+            const baseName = item.count > 1 ? `${item.name} (${item.count}x)` : item.name
+            return {
+              name: editedItems[item.sourceKey] ?? baseName,
+              quantity: null,
+              unit: null,
+              category: item.category,
+              isChecked: checkedSet.has(item.sourceKey),
+              sourceKey: item.sourceKey,
+            }
+          }),
         ],
       },
     },

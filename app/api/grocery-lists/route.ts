@@ -36,17 +36,19 @@ export async function GET(request: Request) {
       )
     }
 
-    // Fetch existing excluded items to preserve across regeneration
+    // Fetch existing preservation data to preserve across regeneration
     const existingList = await db.groceryList.findUnique({
       where: { mealPlanId },
-      select: { excludedItems: true },
+      select: { excludedItems: true, editedItems: true, checkedSourceKeys: true },
     })
 
-    // Always generate fresh list (preserving user deletions)
+    // Always generate fresh list (preserving user deletions, edits, and checked status)
     const groceryList = await generateGroceryList(
       mealPlanId,
       authResult.householdId,
-      existingList?.excludedItems || []
+      existingList?.excludedItems || [],
+      (existingList?.editedItems as Record<string, string>) || {},
+      existingList?.checkedSourceKeys || []
     )
     return NextResponse.json(groceryList)
   } catch (error) {
@@ -76,16 +78,18 @@ export async function POST(request: Request) {
       )
     }
 
-    // Fetch existing excluded items to preserve across regeneration
+    // Fetch existing preservation data to preserve across regeneration
     const existingList = await db.groceryList.findUnique({
       where: { mealPlanId },
-      select: { excludedItems: true },
+      select: { excludedItems: true, editedItems: true, checkedSourceKeys: true },
     })
 
     const groceryList = await generateGroceryList(
       mealPlanId,
       authResult.householdId,
-      existingList?.excludedItems || []
+      existingList?.excludedItems || [],
+      (existingList?.editedItems as Record<string, string>) || {},
+      existingList?.checkedSourceKeys || []
     )
 
     if (!groceryList) {

@@ -335,7 +335,9 @@ model GroceryList {
   id            String   @id @default(cuid())
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  excludedItems String[] @default([]) // Normalized names of items deleted by user (persist across regeneration)
+  excludedItems     String[] @default([]) // sourceKeys of items deleted by user (persist across regeneration)
+  editedItems       Json     @default("{}") // Map of sourceKey -> edited name (persist edits across regeneration)
+  checkedSourceKeys String[] @default([]) // sourceKeys of checked items (persist across regeneration)
 
   // Relations
   mealPlanId String      @unique
@@ -351,6 +353,7 @@ model GroceryItem {
   category    String?
   isChecked   Boolean  @default(false)
   isManualAdd Boolean  @default(false)
+  sourceKey   String?  // Original key for matching edits across regeneration (e.g., "eggs-large")
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

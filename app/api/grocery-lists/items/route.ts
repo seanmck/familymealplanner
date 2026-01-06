@@ -36,6 +36,10 @@ export async function POST(request: Request) {
       )
     }
 
+    // Generate sourceKey for manual items
+    const normalizedName = name.toLowerCase().trim()
+    const sourceKey = `manual:${normalizedName}`
+
     const item = await db.groceryItem.create({
       data: {
         groceryListId,
@@ -45,6 +49,7 @@ export async function POST(request: Request) {
         category: category || 'Other',
         isChecked: false,
         isManualAdd: true,
+        sourceKey,
       },
     })
 
