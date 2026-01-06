@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button'
 import {
   ChefHat,
   Calendar,
-  BookOpen,
   ShoppingCart,
   Users,
   ThumbsUp,
@@ -11,6 +10,11 @@ import {
   Sparkles,
   ArrowRight,
   Check,
+  Link as LinkIcon,
+  Package,
+  Lightbulb,
+  Mail,
+  CalendarDays,
 } from 'lucide-react'
 
 export default function HomePage() {
@@ -63,16 +67,15 @@ export default function HomePage() {
 
             {/* Headline */}
             <h1 className="max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Meal planning that
+              Paste any recipe.
               <span className="block mt-2 pb-2 bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
-                brings families together
+                Plan your whole week.
               </span>
             </h1>
 
             {/* Subheadline */}
             <p className="mt-8 max-w-2xl text-lg text-muted-foreground sm:text-xl leading-relaxed">
-              Plan weekly dinners, manage your recipe collection, and generate grocery lists automatically.
-              Less time deciding, more time enjoying meals with your family.
+              Import recipes from any website, pack school lunches in seconds, and generate grocery lists that skip what you already have.
             </p>
 
             {/* CTA buttons */}
@@ -121,70 +124,70 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-3 max-w-5xl mx-auto">
-              {/* Feature 1 */}
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+              {/* Feature 1: Recipe Import */}
               <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
                 <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                  <BookOpen className="h-7 w-7" />
+                  <LinkIcon className="h-7 w-7" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Recipe Library</h3>
+                <h3 className="text-xl font-semibold mb-3">Recipe Import</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Keep all your family favorites organized in one place. Add ingredients, instructions, and let everyone rate each dish.
+                  Found a recipe online? Paste the URL and we&apos;ll extract the ingredients, instructions, and cooking times automatically.
                 </p>
                 <ul className="mt-6 space-y-2">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Unlimited recipes
+                    Import from any recipe site
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Family ratings
+                    Auto-extracts ingredients
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Tags & search
+                    Family ratings & tags
                   </li>
                 </ul>
               </div>
 
-              {/* Feature 2 */}
+              {/* Feature 2: Weekly Planner */}
               <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
                 <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <Calendar className="h-7 w-7" />
                 </div>
                 <h3 className="text-xl font-semibold mb-3">Weekly Planner</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Visual calendar to plan dinners and lunches. See at a glance which meals might cause mealtime battles.
+                  Visual calendar to plan dinners and lunches. See your family&apos;s calendar events right alongside your meals.
                 </p>
                 <ul className="mt-6 space-y-2">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Week-at-a-glance view
+                    Calendar integration
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Different meals per person
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
                     Picky eater alerts
                   </li>
-                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Check className="h-4 w-4 text-primary" />
-                    Quick-add placeholders
-                  </li>
                 </ul>
               </div>
 
-              {/* Feature 3 */}
+              {/* Feature 3: Grocery Lists */}
               <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
                 <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                   <ShoppingCart className="h-7 w-7" />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">Grocery Lists</h3>
+                <h3 className="text-xl font-semibold mb-3">Smart Grocery Lists</h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  One click generates a shopping list from your meal plan. Ingredients combined and sorted by aisle.
+                  One click generates a shopping list from your meal plan. Automatically skips pantry staples you already have.
                 </p>
                 <ul className="mt-6 space-y-2">
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Auto-generated lists
+                    Skips pantry staples
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
@@ -192,9 +195,194 @@ export default function HomePage() {
                   </li>
                   <li className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Check className="h-4 w-4 text-primary" />
-                    Check off while shopping
+                    Copy & share with family
                   </li>
                 </ul>
+              </div>
+
+              {/* Feature 4: Lunchbox Planner */}
+              <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
+                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Package className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Lunchbox Planner</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Pack school lunches in 30 seconds. Bento-style categories make it easy to build balanced lunches every day.
+                </p>
+                <ul className="mt-6 space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Main, side, fruit, snack, treat
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Copy yesterday&apos;s lunch
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Per-child customization
+                  </li>
+                </ul>
+              </div>
+
+              {/* Feature 5: Smart Suggestions */}
+              <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
+                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Lightbulb className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Smart Suggestions</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Not sure what to make? Enter ingredients you have on hand and get recipe ideas the whole family will enjoy.
+                </p>
+                <ul className="mt-6 space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Use what you have
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Prioritizes expiring items
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Family favorites first
+                  </li>
+                </ul>
+              </div>
+
+              {/* Feature 6: Family Sync */}
+              <div className="group relative bg-card rounded-2xl border border-border/60 p-8 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/30 hover:-translate-y-1">
+                <div className="mb-6 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Mail className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-semibold mb-3">Family Sync</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  Keep everyone in the loop. Email weekly meal summaries to the whole family and sync with your calendar.
+                </p>
+                <ul className="mt-6 space-y-2">
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Email weekly summaries
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    Google Calendar sync
+                  </li>
+                  <li className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Check className="h-4 w-4 text-primary" />
+                    API for your own tools
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="py-24">
+          <div className="container px-4 max-w-5xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                How it works
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+                From recipe to grocery list in three simple steps.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Step 1 */}
+              <div className="text-center">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg">
+                  1
+                </div>
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <LinkIcon className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Import</h3>
+                <p className="text-muted-foreground">
+                  Paste a recipe URL or add your own. We&apos;ll extract all the details.
+                </p>
+              </div>
+
+              {/* Step 2 */}
+              <div className="text-center">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg">
+                  2
+                </div>
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Calendar className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Plan</h3>
+                <p className="text-muted-foreground">
+                  Add meals to your weekly calendar. Plan dinners, lunches, and lunchboxes.
+                </p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="text-center">
+                <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground text-2xl font-bold shadow-lg">
+                  3
+                </div>
+                <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <ShoppingCart className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Shop</h3>
+                <p className="text-muted-foreground">
+                  Get your categorized grocery list. Check off items as you shop.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Product Screenshots Section */}
+        <section className="py-24 bg-muted/30">
+          <div className="container px-4 max-w-6xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                See it in action
+              </h2>
+              <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+                A clean, simple interface that the whole family can use.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8">
+              {/* Screenshot 1: Planner */}
+              <div className="relative group">
+                <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/60 shadow-lg overflow-hidden flex items-center justify-center">
+                  <div className="text-center p-6">
+                    <Calendar className="h-12 w-12 mx-auto mb-4 text-primary/40" />
+                    <p className="text-sm text-muted-foreground">Weekly Planner</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-center font-medium">Weekly Planner</p>
+                <p className="text-sm text-center text-muted-foreground">See your whole week at a glance</p>
+              </div>
+
+              {/* Screenshot 2: Grocery List */}
+              <div className="relative group">
+                <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/60 shadow-lg overflow-hidden flex items-center justify-center">
+                  <div className="text-center p-6">
+                    <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-primary/40" />
+                    <p className="text-sm text-muted-foreground">Grocery List</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-center font-medium">Smart Grocery List</p>
+                <p className="text-sm text-center text-muted-foreground">Organized by category, ready to shop</p>
+              </div>
+
+              {/* Screenshot 3: Lunchbox */}
+              <div className="relative group">
+                <div className="aspect-[4/3] rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border/60 shadow-lg overflow-hidden flex items-center justify-center">
+                  <div className="text-center p-6">
+                    <Package className="h-12 w-12 mx-auto mb-4 text-primary/40" />
+                    <p className="text-sm text-muted-foreground">Lunchbox Planner</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-center font-medium">Lunchbox Planner</p>
+                <p className="text-sm text-center text-muted-foreground">Pack balanced lunches in seconds</p>
               </div>
             </div>
           </div>
@@ -227,21 +415,30 @@ export default function HomePage() {
                     </div>
                   </li>
                   <li className="flex items-start gap-3">
-                    <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">&quot;New to family&quot; badges</p>
-                      <p className="text-sm text-muted-foreground">See which recipes haven&apos;t been tried yet</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
                     <div className="mt-1 h-6 w-6 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
                       <span className="text-destructive text-xs">!</span>
                     </div>
                     <div>
                       <p className="font-medium">Picky eater alerts</p>
                       <p className="text-sm text-muted-foreground">Visual warnings when a meal has kid thumbs-down</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Different meals for different people</p>
+                      <p className="text-sm text-muted-foreground">Plan personalized dinners and lunches per family member</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">Syncs with your calendar</p>
+                      <p className="text-sm text-muted-foreground">See family events alongside your meal plan</p>
                     </div>
                   </li>
                 </ul>
@@ -302,10 +499,10 @@ export default function HomePage() {
         <section className="py-24 bg-primary text-primary-foreground">
           <div className="container px-4 max-w-4xl mx-auto text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl mb-6">
-              Ready to simplify your week?
+              Ready to simplify mealtime?
             </h2>
             <p className="text-lg opacity-90 max-w-2xl mx-auto mb-10">
-              Join families who&apos;ve reclaimed their Sunday evenings. Start planning smarter today.
+              Join families who&apos;ve reclaimed their weeknight sanity. Start planning smarter today.
             </p>
             <Link href="/register">
               <Button size="lg" variant="secondary" className="h-12 px-8 text-base gap-2 shadow-lg">
