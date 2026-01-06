@@ -47,11 +47,9 @@ export function GroceryItem({
 
   const getDisplayText = () => {
     const qtyStr = formatQuantity()
-    const parts = []
-    if (qtyStr) parts.push(qtyStr)
-    if (unit) parts.push(unit)
-    parts.push(name)
-    return parts.join(' ')
+    const suffix =
+      qtyStr || unit ? ` (${[qtyStr, unit].filter(Boolean).join(' ')})` : ''
+    return name + suffix
   }
 
   const startEditing = () => {
@@ -117,9 +115,16 @@ export function GroceryItem({
             isChecked ? 'line-through text-muted-foreground' : ''
           }`}
         >
-          {qtyStr && <span className="font-medium">{qtyStr}</span>}
-          {unit && <span className="text-muted-foreground"> {unit}</span>}
-          <span>{qtyStr || unit ? ' ' : ''}{name}</span>
+          <span>{name}</span>
+          {(qtyStr || unit) && (
+            <span className="text-muted-foreground">
+              {' ('}
+              {qtyStr}
+              {qtyStr && unit ? ' ' : ''}
+              {unit}
+              {')'}
+            </span>
+          )}
         </label>
       )}
       <Button

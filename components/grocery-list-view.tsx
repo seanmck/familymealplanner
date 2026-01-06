@@ -242,8 +242,9 @@ export function GroceryListView() {
       itemsByCategory![category].forEach((item) => {
         const qty = item.quantity ? `${item.quantity}` : ''
         const unit = item.unit || ''
-        const prefix = qty || unit ? `${qty} ${unit}`.trim() + ' ' : ''
-        lines.push(`  ${prefix}${item.name}`)
+        const suffix =
+          qty || unit ? ` (${[qty, unit].filter(Boolean).join(' ')})` : ''
+        lines.push(`  ${item.name}${suffix}`)
       })
       lines.push('') // blank line between categories
     })
