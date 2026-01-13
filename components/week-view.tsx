@@ -555,6 +555,8 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                             ? (recipeId) => handleRemoveSide(dinnerMeal.id, recipeId)
                             : undefined
                         }
+                        mainRecipeId={dinnerMeal?.recipes?.find((r) => r.role === 'MAIN')?.recipe?.id}
+                        onEdit={() => handleSlotClick(index, 'DINNER')}
                       />
                       <MealSlot
                         label="Lunch"
@@ -567,6 +569,8 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                           placeholderTitle: m.placeholderTitle,
                         }))}
                         onClick={() => handleSlotClick(index, 'LUNCH')}
+                        mainRecipeId={lunchMeal?.recipes?.find((r) => r.role === 'MAIN')?.recipe?.id}
+                        onEdit={() => handleSlotClick(index, 'LUNCH')}
                       />
                     </CardContent>
                   </Card>
@@ -654,6 +658,8 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                             ? (recipeId) => handleRemoveSide(dinnerMeal.id, recipeId)
                             : undefined
                         }
+                        mainRecipeId={dinnerMeal?.recipes?.find((r) => r.role === 'MAIN')?.recipe?.id}
+                        onEdit={() => handleSlotClick(index, 'DINNER')}
                       />
                       <MealSlot
                         label="Lunch"
@@ -666,6 +672,8 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
                           placeholderTitle: m.placeholderTitle,
                         }))}
                         onClick={() => handleSlotClick(index, 'LUNCH')}
+                        mainRecipeId={lunchMeal?.recipes?.find((r) => r.role === 'MAIN')?.recipe?.id}
+                        onEdit={() => handleSlotClick(index, 'LUNCH')}
                       />
                     </CardContent>
                   </Card>

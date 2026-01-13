@@ -2,7 +2,8 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { X, Plus, Sparkles, AlertTriangle, Utensils, ExternalLink } from 'lucide-react'
+import { X, Plus, Sparkles, AlertTriangle, Utensils, ExternalLink, Pencil } from 'lucide-react'
+import Link from 'next/link'
 
 interface Recipe {
   id: string
@@ -58,9 +59,11 @@ interface MealSlotProps {
   onClear?: () => void
   onAddSide?: () => void
   onRemoveSide?: (recipeId: string) => void
+  onEdit?: () => void
+  mainRecipeId?: string
 }
 
-export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [], memberDinnerMeals = [], onClick, onClear, onAddSide, onRemoveSide }: MealSlotProps) {
+export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [], memberDinnerMeals = [], onClick, onClear, onAddSide, onRemoveSide, onEdit, mainRecipeId }: MealSlotProps) {
   const mainRecipe = meal?.recipes?.find((r) => r.role === 'MAIN')?.recipe
   const sideRecipes = meal?.recipes?.filter((r) => r.role === 'SIDE') || []
 
@@ -129,12 +132,38 @@ export function MealSlot({ label, meal, lunchboxItems = [], memberLunchMeals = [
         {/* Dinner: Recipe display */}
         {!isLunch && hasMainOrPlaceholder && (
           <div className="space-y-1.5">
-            <p className="text-sm font-medium leading-tight text-foreground flex items-center gap-1">
-              {mainRecipe?.title || meal?.placeholderTitle}
-              {mainRecipe?.sourceUrl && (
-                <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+            <div className="flex items-center gap-1.5">
+              {mainRecipeId ? (
+                <Link
+                  href={`/recipes/${mainRecipeId}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-sm font-medium leading-tight text-foreground hover:text-primary hover:underline flex items-center gap-1 flex-1 min-w-0"
+                >
+                  <span className="truncate">{mainRecipe?.title}</span>
+                  {mainRecipe?.sourceUrl && (
+                    <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                  )}
+                </Link>
+              ) : (
+                <p className="text-sm font-medium leading-tight text-foreground flex items-center gap-1 flex-1 min-w-0">
+                  <span className="truncate">{meal?.placeholderTitle}</span>
+                </p>
               )}
-            </p>
+              {onEdit && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEdit()
+                  }}
+                  aria-label="Edit meal"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
 
             {/* Sides display */}
             {sideRecipes.length > 0 && (
