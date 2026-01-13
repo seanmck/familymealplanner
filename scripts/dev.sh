@@ -19,15 +19,17 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Start PostgreSQL
-echo "📦 Starting PostgreSQL database..."
-docker compose up -d
-
-# Wait for PostgreSQL to be ready
-echo "⏳ Waiting for PostgreSQL to be ready..."
-until docker compose exec -T postgres pg_isready -U familytable > /dev/null 2>&1; do
-    sleep 1
-done
+# Start PostgreSQL (or use existing container from another worktree)
+if docker ps --format '{{.Names}}' | grep -q '^familytable-db$'; then
+    echo "✅ PostgreSQL already running (reusing existing container)"
+else
+    echo "📦 Starting PostgreSQL database..."
+    docker compose up -d
+    echo "⏳ Waiting for PostgreSQL to be ready..."
+    until docker exec familytable-db pg_isready -U familytable > /dev/null 2>&1; do
+        sleep 1
+    done
+fi
 echo "✅ PostgreSQL is ready"
 
 # Run Prisma migrations
