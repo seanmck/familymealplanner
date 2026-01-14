@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { auth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import {
   ChefHat,
@@ -17,7 +19,13 @@ import {
   CalendarDays,
 } from 'lucide-react'
 
-export default function HomePage() {
+export default async function HomePage() {
+  const session = await auth()
+
+  if (session?.user?.householdId) {
+    redirect('/planner')
+  }
+
   return (
     <div className="flex min-h-screen flex-col overflow-hidden">
       {/* Header */}
