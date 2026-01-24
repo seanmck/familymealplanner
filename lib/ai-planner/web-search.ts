@@ -1,10 +1,13 @@
-// Web recipe search using DuckDuckGo (no API key required)
+// Web recipe search using Brave Search API
+
+import Anthropic from '@anthropic-ai/sdk'
 
 export interface WebRecipeResult {
   title: string
   url: string
   snippet: string
   source: string
+  imageUrl?: string | null
 }
 
 export interface WebSearchResponse {
@@ -23,37 +26,68 @@ const RECIPE_SITES = [
   'delish.com',
 ]
 
+interface BraveSearchResult {
+  title: string
+  url: string
+  description: string
+  thumbnail?: {
+    src: string
+  }
+}
+
+interface BraveSearchResponse {
+  web?: {
+    results: BraveSearchResult[]
+  }
+}
+
 /**
- * Search for recipes using DuckDuckGo HTML (no API key needed)
+ * Search for recipes using Brave Search API
  */
 export async function searchWebRecipes(
   query: string,
   limit: number = 5
 ): Promise<WebSearchResponse> {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY
+
+  if (!apiKey) {
+    console.error('BRAVE_SEARCH_API_KEY not configured')
+    return { results: [], searchQuery: query }
+  }
+
   try {
     // Add recipe sites to query for better results
     const siteQuery = RECIPE_SITES.slice(0, 3).map(s => `site:${s}`).join(' OR ')
     const fullQuery = `${query} recipe (${siteQuery})`
 
-    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(fullQuery)}`
+    const url = new URL('https://api.search.brave.com/res/v1/web/search')
+    url.searchParams.set('q', fullQuery)
+    url.searchParams.set('count', '20') // Fetch more to filter with LLM
 
-    const response = await fetch(url, {
+    const response = await fetch(url.toString(), {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; FamilyTable/1.0)',
+        'Accept': 'application/json',
+        'X-Subscription-Token': apiKey,
       },
     })
 
     if (!response.ok) {
-      console.error('DuckDuckGo search failed:', response.status)
+      console.error('Brave search failed:', response.status, await response.text())
       return { results: [], searchQuery: query }
     }
 
-    const html = await response.text()
+    const data: BraveSearchResponse = await response.json()
 
-    // Parse results from HTML
-    const results = parseSearchResults(html, limit)
+    // Parse results from recipe sites
+    const candidates = parseSearchResults(data, 20)
 
-    console.log(`Web search for "${query}" found ${results.length} recipes`)
+    // Use LLM to filter out roundup/listicle pages
+    const filtered = await filterWithLLM(candidates)
+
+    // Return requested limit
+    const results = filtered.slice(0, limit)
+
+    console.log(`Web search for "${query}": ${candidates.length} candidates -> ${filtered.length} valid -> ${results.length} returned`)
 
     return { results, searchQuery: query }
   } catch (error) {
@@ -63,61 +97,105 @@ export async function searchWebRecipes(
 }
 
 /**
- * Parse search results from DuckDuckGo HTML
+ * Use LLM to filter out roundup/listicle pages, keeping only single-recipe URLs
  */
-function parseSearchResults(html: string, limit: number): WebRecipeResult[] {
+async function filterWithLLM(candidates: WebRecipeResult[]): Promise<WebRecipeResult[]> {
+  if (candidates.length === 0) {
+    return []
+  }
+
+  // Skip LLM filtering if Anthropic not configured
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('ANTHROPIC_API_KEY not configured, skipping LLM filter')
+    return candidates
+  }
+
+  try {
+    const anthropic = new Anthropic()
+
+    // Build compact list for LLM
+    const candidateList = candidates.map((c, i) =>
+      `${i + 1}. "${c.title}" - ${c.url}${c.snippet ? ` | ${c.snippet.slice(0, 100)}` : ''}`
+    ).join('\n')
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 256,
+      messages: [{
+        role: 'user',
+        content: `Filter this list to ONLY include URLs that link to a SINGLE recipe page.
+
+EXCLUDE:
+- Roundup/listicle pages ("25 best dinners", "easy weeknight meal ideas")
+- Gallery/collection pages listing multiple recipes
+- Category or index pages
+
+INCLUDE:
+- Pages for ONE specific recipe (e.g., "Honey Garlic Chicken", "Sheet Pan Salmon")
+
+${candidateList}
+
+Return JSON with the numbers of valid single-recipe pages: {"valid": [1, 3, 5]}`
+      }]
+    })
+
+    const text = response.content[0]
+    if (text.type !== 'text') {
+      return candidates
+    }
+
+    // Parse response
+    const match = text.text.match(/\{[\s\S]*"valid"[\s\S]*\[[\s\S]*\][\s\S]*\}/)
+    if (!match) {
+      console.warn('LLM filter returned unexpected format:', text.text)
+      return candidates
+    }
+
+    const parsed = JSON.parse(match[0])
+    const validIndices = new Set(parsed.valid.map((n: number) => n - 1)) // Convert to 0-indexed
+
+    return candidates.filter((_, i) => validIndices.has(i))
+  } catch (error) {
+    console.error('LLM filter failed, returning all candidates:', error)
+    return candidates
+  }
+}
+
+/**
+ * Parse search results from Brave Search API response
+ */
+function parseSearchResults(data: BraveSearchResponse, limit: number): WebRecipeResult[] {
   const results: WebRecipeResult[] = []
 
-  // Match result blocks - DuckDuckGo uses class="result__a" for links
-  const linkRegex = /<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi
-  const snippetRegex = /<a[^>]+class="result__snippet"[^>]*>([^<]*(?:<[^>]+>[^<]*)*)<\/a>/gi
+  if (!data.web?.results) {
+    return results
+  }
 
-  let linkMatch
-  const links: { url: string; title: string }[] = []
-
-  while ((linkMatch = linkRegex.exec(html)) !== null && links.length < limit * 2) {
-    let url = linkMatch[1]
-    const title = linkMatch[2].trim()
-
-    // DuckDuckGo wraps URLs - extract the actual URL
-    if (url.includes('uddg=')) {
-      const match = url.match(/uddg=([^&]+)/)
-      if (match) {
-        url = decodeURIComponent(match[1])
-      }
-    }
-
+  for (const result of data.web.results) {
     // Only include results from recipe sites
-    if (RECIPE_SITES.some(site => url.includes(site))) {
-      links.push({ url, title })
+    if (!RECIPE_SITES.some(site => result.url.includes(site))) {
+      continue
     }
-  }
-
-  // Get snippets
-  const snippets: string[] = []
-  let snippetMatch
-  while ((snippetMatch = snippetRegex.exec(html)) !== null) {
-    snippets.push(snippetMatch[1].replace(/<[^>]+>/g, '').trim())
-  }
-
-  // Combine links with snippets
-  for (let i = 0; i < Math.min(links.length, limit); i++) {
-    const { url, title } = links[i]
 
     // Extract source domain
     let source = 'web'
     try {
-      source = new URL(url).hostname.replace('www.', '')
+      source = new URL(result.url).hostname.replace('www.', '')
     } catch {
       // Keep default
     }
 
     results.push({
-      title: cleanRecipeTitle(title),
-      url,
-      snippet: snippets[i] || '',
+      title: cleanRecipeTitle(result.title),
+      url: result.url,
+      snippet: result.description || '',
       source,
+      imageUrl: result.thumbnail?.src || null,
     })
+
+    if (results.length >= limit) {
+      break
+    }
   }
 
   return results
@@ -135,34 +213,172 @@ function cleanRecipeTitle(title: string): string {
     .trim()
 }
 
-/**
- * Build search queries based on context
- */
-export function buildSearchQueries(
-  perishables: string[],
-  preferredTags: string[],
+export interface SearchQueryContext {
   userPrompt?: string
-): string[] {
-  const queries: string[] = []
+  perishables: string[]
+  preferredTags: string[]
+  recentMeals: string[]
+  familyNotes?: string // e.g., "2 adults, 1 picky child"
+}
 
-  if (userPrompt) {
-    queries.push(userPrompt)
+/**
+ * Use LLM to generate targeted search queries based on context
+ */
+export async function buildSearchQueries(
+  context: SearchQueryContext
+): Promise<string[]> {
+  // Fallback queries if LLM unavailable
+  const fallbackQueries = ['easy weeknight dinner', 'quick family dinner']
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('ANTHROPIC_API_KEY not configured, using fallback queries')
+    return fallbackQueries
   }
 
-  if (perishables.length > 0) {
-    const perishableQuery = perishables.slice(0, 3).join(' ')
-    queries.push(`easy ${perishableQuery} dinner`)
-  }
+  try {
+    const anthropic = new Anthropic()
 
-  if (preferredTags.length > 0) {
-    const tagQuery = preferredTags.slice(0, 2).join(' ')
-    queries.push(`${tagQuery} dinner`)
-  }
+    const contextLines: string[] = []
 
-  if (queries.length < 2) {
-    queries.push('easy weeknight dinner')
-    queries.push('quick family dinner')
-  }
+    if (context.userPrompt) {
+      contextLines.push(`User request: "${context.userPrompt}"`)
+    }
+    if (context.perishables.length > 0) {
+      contextLines.push(`Expiring ingredients to use: ${context.perishables.join(', ')}`)
+    }
+    if (context.preferredTags.length > 0) {
+      contextLines.push(`Family preferences: ${context.preferredTags.join(', ')}`)
+    }
+    if (context.recentMeals.length > 0) {
+      contextLines.push(`Recently made (avoid similar): ${context.recentMeals.slice(0, 5).join(', ')}`)
+    }
+    if (context.familyNotes) {
+      contextLines.push(`Family: ${context.familyNotes}`)
+    }
 
-  return queries.slice(0, 3)
+    // If no context, return fallbacks
+    if (contextLines.length === 0) {
+      return fallbackQueries
+    }
+
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 100,
+      messages: [{
+        role: 'user',
+        content: `Generate ONE specific recipe search query based on this context:
+
+${contextLines.join('\n')}
+
+Guidelines:
+- Be specific (e.g., "honey garlic salmon" not "fish dinner")
+- Prioritize using expiring ingredients if listed
+- Target a single recipe, not roundups
+
+Return JSON: {"query": "your search query"}`
+      }]
+    })
+
+    const text = response.content[0]
+    if (text.type !== 'text') {
+      return fallbackQueries
+    }
+
+    const match = text.text.match(/\{[\s\S]*"query"[\s\S]*:[\s\S]*"([^"]+)"[\s\S]*\}/)
+    if (!match) {
+      console.warn('Query generation returned unexpected format:', text.text)
+      return fallbackQueries
+    }
+
+    const query = match[1].trim()
+
+    console.log('LLM generated search query:', query)
+
+    return query.length > 0 ? [query] : fallbackQueries
+  } catch (error) {
+    console.error('Query generation failed, using fallbacks:', error)
+    return fallbackQueries
+  }
+}
+
+/**
+ * Fetch the image URL from a recipe page
+ * Looks for og:image, schema.org image, or twitter:image
+ */
+export async function fetchRecipeImage(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const html = await response.text()
+
+    // Try og:image first (most common) - handle various attribute orderings
+    let imageUrl: string | null = null
+
+    // Pattern 1: property before content
+    const ogMatch1 = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)["']/i)
+    if (ogMatch1) {
+      imageUrl = ogMatch1[1]
+    }
+
+    // Pattern 2: content before property
+    if (!imageUrl) {
+      const ogMatch2 = html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:image["']/i)
+      if (ogMatch2) {
+        imageUrl = ogMatch2[1]
+      }
+    }
+
+    // Pattern 3: with other attributes in between
+    if (!imageUrl) {
+      const ogMatch3 = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+      if (ogMatch3) {
+        imageUrl = ogMatch3[1]
+      }
+    }
+
+    if (imageUrl) {
+      return imageUrl
+    }
+
+    // Try twitter:image
+    const twitterMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i)
+    if (twitterMatch) {
+      return twitterMatch[1]
+    }
+
+    // Try schema.org Recipe image
+    const schemaMatch = html.match(/"image"\s*:\s*"([^"]+)"/i)
+      || html.match(/"image"\s*:\s*\[\s*"([^"]+)"/i)
+    if (schemaMatch) {
+      return schemaMatch[1]
+    }
+
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Enrich web recipe results with images (fetched in parallel)
+ */
+export async function enrichWithImages(
+  results: WebRecipeResult[]
+): Promise<WebRecipeResult[]> {
+  const imagePromises = results.map(async (result) => {
+    const imageUrl = await fetchRecipeImage(result.url)
+    return { ...result, imageUrl }
+  })
+
+  return Promise.all(imagePromises)
 }

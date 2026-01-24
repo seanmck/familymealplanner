@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { getAuth } from '@/lib/api-auth'
 import { Rating, FamilyRole } from '@prisma/client'
 import type { PlannerContext, WebRecipeContext } from '@/lib/ai-planner/types'
-import { searchWebRecipes, buildSearchQueries } from '@/lib/ai-planner/web-search'
+import { searchWebRecipes, buildSearchQueries, enrichWithImages, type SearchQueryContext } from '@/lib/ai-planner/web-search'
 
 const MAX_RECIPES = 30
 const MIN_RECIPES_FOR_VARIETY = 10 // If fewer recipes, search the web
@@ -118,6 +118,7 @@ export async function GET(request: Request) {
       score: number
       daysSinceUsed: number | null
       kidDownVotes: number
+      imageUrl: string | null
     }
 
     const favoriteRecipes: ScoredRecipe[] = []
@@ -173,6 +174,7 @@ export async function GET(request: Request) {
         score,
         daysSinceUsed,
         kidDownVotes: 0,
+        imageUrl: recipe.imageUrl,
       })
     }
 
@@ -184,6 +186,7 @@ export async function GET(request: Request) {
       tags: r.tags,
       score: r.score,
       daysSinceUsed: r.daysSinceUsed,
+      imageUrl: r.imageUrl,
     }))
 
     // Sort avoid recipes by kid downvotes
@@ -270,36 +273,36 @@ export async function GET(request: Request) {
     const shouldSearchWeb = includeWebSearch && (userPrompt || topFavorites.length < MIN_RECIPES_FOR_VARIETY)
 
     if (shouldSearchWeb) {
-      const perishableNames = perishablesContext.map((p) => p.name)
-      const searchQueries = buildSearchQueries(perishableNames, preferredTags, userPrompt)
-
-      console.log('Web search queries:', searchQueries)
-
-      // Run searches in parallel
-      const searchPromises = searchQueries.slice(0, 2).map((q) => searchWebRecipes(q, 5))
-      const searchResults = await Promise.all(searchPromises)
-
-      // Deduplicate by URL and collect results
-      const seenUrls = new Set<string>()
-      webRecipes = []
-
-      for (const result of searchResults) {
-        for (const recipe of result.results) {
-          if (!seenUrls.has(recipe.url)) {
-            seenUrls.add(recipe.url)
-            webRecipes.push({
-              url: recipe.url,
-              title: recipe.title,
-              snippet: recipe.snippet,
-              source: recipe.source,
-            })
-          }
-        }
+      // Build rich context for LLM query generation
+      const queryContext: SearchQueryContext = {
+        userPrompt,
+        perishables: perishablesContext.map((p) => p.name),
+        preferredTags,
+        recentMeals: recentMeals.map((m) => m.title),
+        familyNotes: familyMembers.length > 0
+          ? `${familyMembers.filter(m => m.role === 'ADULT').length} adults, ${familyMembers.filter(m => m.role === 'CHILD').length} children`
+          : undefined,
       }
 
-      // Limit total web recipes
-      webRecipes = webRecipes.slice(0, 10)
-      console.log(`Web search found ${webRecipes.length} recipes`)
+      const searchQueries = await buildSearchQueries(queryContext)
+
+      console.log('Web search query:', searchQueries[0])
+
+      // Single search with more results (avoid rate limits)
+      const searchResult = await searchWebRecipes(searchQueries[0], 10)
+
+      const dedupedResults = searchResult.results
+      const enrichedResults = await enrichWithImages(dedupedResults)
+
+      webRecipes = enrichedResults.map((r) => ({
+        url: r.url,
+        title: r.title,
+        snippet: r.snippet,
+        source: r.source,
+        imageUrl: r.imageUrl,
+      }))
+
+      console.log(`Web search found ${webRecipes.length} recipes with ${webRecipes.filter(r => r.imageUrl).length} images`)
 
       if (webRecipes.length > 0) {
         webSearchStatus = 'success'

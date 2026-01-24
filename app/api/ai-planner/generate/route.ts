@@ -120,6 +120,20 @@ export async function POST(request: Request) {
           return true
         })
 
+        // Enrich suggestions with image URLs
+        const recipeImageMap = new Map(
+          availableRecipes.map((r) => [r.id, r.imageUrl])
+        )
+        const webRecipeImageMap = new Map(
+          webRecipes.map((r) => [r.url, r.imageUrl])
+        )
+        suggestions = suggestions.map((s) => ({
+          ...s,
+          imageUrl: s.isWebRecipe
+            ? webRecipeImageMap.get(s.recipeId) || null
+            : recipeImageMap.get(s.recipeId) || null,
+        }))
+
         // If we got at least some valid suggestions, we're good
         if (suggestions.length > 0) {
           break

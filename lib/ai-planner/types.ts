@@ -17,6 +17,7 @@ export interface FavoriteRecipeContext {
   tags: string[]
   score: number
   daysSinceUsed: number | null
+  imageUrl?: string | null
 }
 
 export interface AvoidRecipeContext {
@@ -45,6 +46,7 @@ export interface WebRecipeContext {
   title: string
   snippet: string
   source: string
+  imageUrl?: string | null
 }
 
 export interface PlannerContext {
@@ -81,6 +83,7 @@ export interface AISuggestion {
   recipeTitle: string
   reason: string
   confidence: ConfidenceLevel
+  imageUrl?: string | null
   // For web recipes that need to be imported
   isWebRecipe?: boolean
   webRecipeUrl?: string
