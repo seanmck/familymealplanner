@@ -41,14 +41,6 @@ export interface ExistingMealContext {
   title: string
 }
 
-export interface WebRecipeContext {
-  url: string
-  title: string
-  snippet: string
-  source: string
-  imageUrl?: string | null
-}
-
 export interface PlannerContext {
   family: {
     members: FamilyMemberContext[]
@@ -61,7 +53,6 @@ export interface PlannerContext {
   recentMeals: RecentMealContext[]
   perishables: PerishableContext[]
   existingMeals: ExistingMealContext[]
-  webRecipes?: WebRecipeContext[]
 }
 
 // ============================================================================
@@ -73,6 +64,7 @@ export interface GenerateRequest {
   userPrompt?: string
   daysToGenerate: number[]
   excludeRecipeIds?: string[]
+  enableWebSearch?: boolean
 }
 
 export type ConfidenceLevel = 'high' | 'medium' | 'low'

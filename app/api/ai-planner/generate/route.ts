@@ -7,6 +7,19 @@ import type { GenerateRequest, GenerateResponse, AISuggestion } from '@/lib/ai-p
 const MAX_RETRIES = 1
 const MODEL = 'claude-haiku-4-5-20251001'
 
+// Recipe sites to allow for web search
+const RECIPE_DOMAINS = [
+  'allrecipes.com',
+  'seriouseats.com',
+  'budgetbytes.com',
+  'foodnetwork.com',
+  'bonappetit.com',
+  'epicurious.com',
+  'simplyrecipes.com',
+  'delish.com',
+  'cooking.nytimes.com',
+]
+
 export async function POST(request: Request) {
   try {
     const authResult = await getAuth(request)
@@ -39,13 +52,13 @@ export async function POST(request: Request) {
       )
     }
 
-    // Check if there are any recipes to suggest (local or web)
+    // Check if there are any recipes to suggest
     const availableRecipes = body.context.preferences.favoriteRecipes.filter(
       (r) => !body.excludeRecipeIds?.includes(r.id)
     )
-    const webRecipes = body.context.webRecipes || []
+    const enableWebSearch = body.enableWebSearch ?? false
 
-    if (availableRecipes.length === 0 && webRecipes.length === 0) {
+    if (availableRecipes.length === 0 && !enableWebSearch) {
       return NextResponse.json(
         {
           error: 'No recipes available to suggest',
@@ -70,12 +83,26 @@ export async function POST(request: Request) {
     let outputTokens = 0
     let lastError: Error | null = null
 
+    // Build tools array - include web search if enabled
+    // Note: web_search_20250305 is a server-side tool type not fully typed in the SDK yet
+    const tools = enableWebSearch
+      ? [
+          {
+            type: 'web_search_20250305' as const,
+            name: 'web_search',
+            max_uses: 3,
+            allowed_domains: RECIPE_DOMAINS,
+          },
+        ]
+      : []
+
     // Try to get valid suggestions, with retry on parse failure
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await anthropic.messages.create({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const createParams: any = {
           model: MODEL,
-          max_tokens: 1024,
+          max_tokens: 2048, // Increased to accommodate web search results
           messages: [
             {
               role: 'user',
@@ -83,33 +110,43 @@ export async function POST(request: Request) {
             },
           ],
           system: SYSTEM_PROMPT,
-        })
+        }
+        if (tools.length > 0) {
+          createParams.tools = tools
+        }
+        const response = await anthropic.messages.create(createParams)
 
         // Track token usage
         inputTokens = response.usage.input_tokens
         outputTokens = response.usage.output_tokens
 
-        // Extract text content
-        const textContent = response.content.find((c) => c.type === 'text')
-        if (!textContent || textContent.type !== 'text') {
+        // Extract the final text content (after any web searches)
+        // The response may contain: text, server_tool_use, web_search_tool_result blocks
+        // We want the last text block which contains the JSON response
+        const textBlocks = response.content.filter((c) => c.type === 'text')
+        const lastTextBlock = textBlocks[textBlocks.length - 1]
+
+        if (!lastTextBlock || lastTextBlock.type !== 'text') {
           throw new Error('No text response from AI')
         }
 
         // Parse the response
-        suggestions = parseAIResponse(textContent.text)
+        suggestions = parseAIResponse(lastTextBlock.text)
 
-        // Validate that suggested recipe IDs exist in available recipes or web recipes
+        // Validate that suggested recipe IDs exist in available recipes
+        // For web recipes, we trust the URLs from Claude's web search
         const validRecipeIds = new Set(availableRecipes.map((r) => r.id))
-        const validWebUrls = new Set(webRecipes.map((r) => r.url))
 
         suggestions = suggestions.filter((s) => {
-          // Web recipes use URL as recipeId
+          // Web recipes use URL as recipeId - validate URL format
           if (s.isWebRecipe) {
-            if (!validWebUrls.has(s.recipeId)) {
+            try {
+              new URL(s.recipeId)
+              return true
+            } catch {
               console.warn(`AI suggested invalid web recipe URL: ${s.recipeId}`)
               return false
             }
-            return true
           }
 
           // Regular recipes
@@ -120,17 +157,14 @@ export async function POST(request: Request) {
           return true
         })
 
-        // Enrich suggestions with image URLs
+        // Enrich suggestions with image URLs (only for local recipes)
         const recipeImageMap = new Map(
           availableRecipes.map((r) => [r.id, r.imageUrl])
-        )
-        const webRecipeImageMap = new Map(
-          webRecipes.map((r) => [r.url, r.imageUrl])
         )
         suggestions = suggestions.map((s) => ({
           ...s,
           imageUrl: s.isWebRecipe
-            ? webRecipeImageMap.get(s.recipeId) || null
+            ? null // Web recipe images will be fetched during import
             : recipeImageMap.get(s.recipeId) || null,
         }))
 

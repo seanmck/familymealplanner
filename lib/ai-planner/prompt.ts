@@ -14,26 +14,31 @@ Guidelines:
 - Consider the user's specific requests (easy meals on busy days, guests, etc.)
 - WEEKNIGHT RULE: Monday-Thursday meals should be quick and simple (under 30-40 min total). Save complex or time-intensive recipes for Friday-Sunday.
 - Keep reasons to 1-2 concise sentences explaining why this recipe fits
-- If WEB RECIPES are provided and the user asks for something "new", "different", or to "try" something, you MUST include at least one web recipe in your suggestions
-- WEB RECIPES can also be suggested when they use expiring ingredients or add variety to the week
+
+WEB SEARCH FOR NEW RECIPES:
+- If the user asks for something "new", "different", or to "try" something, you MUST use the web_search tool to find recipes
+- You can also search when their available recipes don't cover the request, or to find recipes that use expiring ingredients
+- When searching, look for specific single-recipe pages (not roundups or listicles like "25 best dinners")
+- Good recipe sites include: allrecipes.com, seriouseats.com, budgetbytes.com, foodnetwork.com, bonappetit.com, epicurious.com, simplyrecipes.com, delish.com, cooking.nytimes.com
+- For web recipes, use the full URL as the recipeId and set isWebRecipe: true
 
 Confidence levels:
 - "high": Recipe is a family favorite, uses expiring ingredients, or perfectly matches user request
 - "medium": Good fit but not perfect (recently made, or partial match to preferences)
 - "low": Only option available, or compromises needed
 
-CRITICAL: Only suggest recipes from "AVAILABLE RECIPES" or "WEB RECIPES" lists. Never invent recipes.
+CRITICAL: Only suggest recipes from "AVAILABLE RECIPES" or from web search results. Never invent recipes.
 
 Respond with valid JSON matching this schema:
 {
   "suggestions": [
     {
       "dayOfWeek": <number 0-6 where 0=Monday>,
-      "recipeId": "<recipe ID from AVAILABLE RECIPES, or URL from WEB RECIPES>",
+      "recipeId": "<recipe ID from AVAILABLE RECIPES, or full URL for web recipes>",
       "recipeTitle": "<exact recipe title>",
       "reason": "<1-2 sentence explanation>",
       "confidence": "high" | "medium" | "low",
-      "isWebRecipe": <true if from WEB RECIPES, false or omit if from AVAILABLE RECIPES>
+      "isWebRecipe": <true if from web search, false or omit if from AVAILABLE RECIPES>
     }
   ]
 }`
@@ -115,18 +120,6 @@ export function buildUserPrompt(
     lines.push('ALREADY PLANNED THIS WEEK:')
     for (const meal of context.existingMeals) {
       lines.push(`- ${DAYS_OF_WEEK[meal.dayOfWeek]}: "${meal.title}"`)
-    }
-    lines.push('')
-  }
-
-  // Web recipes (from search)
-  if (context.webRecipes && context.webRecipes.length > 0) {
-    lines.push('WEB RECIPES (can be imported - use URL as recipeId, set isWebRecipe: true):')
-    for (const recipe of context.webRecipes) {
-      lines.push(`- URL: ${recipe.url} | "${recipe.title}" | ${recipe.source}`)
-      if (recipe.snippet) {
-        lines.push(`  ${recipe.snippet.slice(0, 150)}...`)
-      }
     }
     lines.push('')
   }
