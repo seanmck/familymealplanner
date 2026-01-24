@@ -66,14 +66,10 @@ export function AIPlanModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, status])
 
-  const fetchContext = useCallback(async (userPromptForSearch?: string): Promise<PlannerContext | null> => {
+  const fetchContext = useCallback(async (): Promise<PlannerContext | null> => {
     const params = new URLSearchParams({
       weekStart: weekStart.toISOString(),
-      includeWebSearch: 'true',
     })
-    if (userPromptForSearch) {
-      params.set('userPrompt', userPromptForSearch)
-    }
     const response = await fetch(`/api/ai-planner/context?${params}`)
     if (!response.ok) {
       const err = await response.json()
@@ -91,7 +87,7 @@ export function AIPlanModal({
         // Fetch fresh context if we don't have it
         let ctx = context
         if (!ctx) {
-          ctx = await fetchContext(feedbackText || initialUserPrompt)
+          ctx = await fetchContext()
           setContext(ctx)
         }
 
@@ -110,6 +106,7 @@ export function AIPlanModal({
             userPrompt: feedbackText || initialUserPrompt,
             daysToGenerate: targetDays,
             excludeRecipeIds: excludes.length > 0 ? excludes : undefined,
+            enableWebSearch: true,
           }),
         })
 

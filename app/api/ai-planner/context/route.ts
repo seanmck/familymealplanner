@@ -2,11 +2,9 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getAuth } from '@/lib/api-auth'
 import { Rating, FamilyRole } from '@prisma/client'
-import type { PlannerContext, WebRecipeContext } from '@/lib/ai-planner/types'
-import { searchWebRecipes, buildSearchQueries, enrichWithImages, type SearchQueryContext } from '@/lib/ai-planner/web-search'
+import type { PlannerContext } from '@/lib/ai-planner/types'
 
 const MAX_RECIPES = 30
-const MIN_RECIPES_FOR_VARIETY = 10 // If fewer recipes, search the web
 const MAX_RECENT_MEALS = 20
 const WEEKS_TO_LOOK_BACK = 4
 const PERISHABLE_DAYS_THRESHOLD = 7
@@ -263,56 +261,6 @@ export async function GET(request: Request) {
         'Planned meal',
     }))
 
-    // Check if we should search the web for more recipes
-    const includeWebSearch = searchParams.get('includeWebSearch') === 'true'
-    const userPrompt = searchParams.get('userPrompt') || undefined
-    let webRecipes: WebRecipeContext[] | undefined
-    let webSearchStatus: string | undefined
-
-    // Search web if enabled AND (user requested OR local recipes are sparse)
-    const shouldSearchWeb = includeWebSearch && (userPrompt || topFavorites.length < MIN_RECIPES_FOR_VARIETY)
-
-    console.log('Web search decision:', { includeWebSearch, userPrompt: !!userPrompt, recipeCount: topFavorites.length, shouldSearchWeb })
-
-    if (shouldSearchWeb) {
-      // Build rich context for LLM query generation
-      const queryContext: SearchQueryContext = {
-        userPrompt,
-        perishables: perishablesContext.map((p) => p.name),
-        preferredTags,
-        recentMeals: recentMeals.map((m) => m.title),
-        familyNotes: familyMembers.length > 0
-          ? `${familyMembers.filter(m => m.role === 'ADULT').length} adults, ${familyMembers.filter(m => m.role === 'CHILD').length} children`
-          : undefined,
-      }
-
-      const searchQueries = await buildSearchQueries(queryContext)
-
-      console.log('Web search query:', searchQueries[0])
-
-      // Single search with more results (avoid rate limits)
-      const searchResult = await searchWebRecipes(searchQueries[0], 10)
-
-      const dedupedResults = searchResult.results
-      const enrichedResults = await enrichWithImages(dedupedResults)
-
-      webRecipes = enrichedResults.map((r) => ({
-        url: r.url,
-        title: r.title,
-        snippet: r.snippet,
-        source: r.source,
-        imageUrl: r.imageUrl,
-      }))
-
-      console.log(`Web search found ${webRecipes.length} recipes with ${webRecipes.filter(r => r.imageUrl).length} images`)
-
-      if (webRecipes.length > 0) {
-        webSearchStatus = 'success'
-      } else {
-        webSearchStatus = 'no_results'
-      }
-    }
-
     const response: PlannerContext = {
       family: {
         members: familyMembers,
@@ -325,7 +273,6 @@ export async function GET(request: Request) {
       recentMeals,
       perishables: perishablesContext,
       existingMeals,
-      webRecipes,
     }
 
     return NextResponse.json(response)
