@@ -1,8 +1,9 @@
 'use client'
 
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, X, RefreshCw, Loader2, Globe, ExternalLink } from 'lucide-react'
+import { Check, X, RefreshCw, Loader2, Globe, ExternalLink, UtensilsCrossed } from 'lucide-react'
 import type { AISuggestionCardProps } from '@/lib/ai-planner/types'
 
 const DAYS_OF_WEEK = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -22,13 +23,32 @@ export function AISuggestionCard({
   return (
     <div
       className={`
-        rounded-lg border p-4 transition-all
+        rounded-lg border p-4 md:p-5 transition-all
         ${isAccepted ? 'border-green-500/50 bg-green-50/50 dark:bg-green-950/20' : ''}
         ${isRejected ? 'border-muted bg-muted/30' : ''}
         ${isPending ? 'border-border' : ''}
       `}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start gap-3 md:gap-4">
+        {/* Recipe image */}
+        <div className="shrink-0">
+          {suggestion.imageUrl ? (
+            <div className="relative w-16 h-16 md:w-24 md:h-24 rounded-md overflow-hidden">
+              <Image
+                src={suggestion.imageUrl}
+                alt={suggestion.recipeTitle}
+                fill
+                className={`object-cover ${isRejected ? 'opacity-50 grayscale' : ''}`}
+                sizes="(min-width: 768px) 96px, 64px"
+              />
+            </div>
+          ) : (
+            <div className={`w-16 h-16 md:w-24 md:h-24 rounded-md bg-muted flex items-center justify-center ${isRejected ? 'opacity-50' : ''}`}>
+              <UtensilsCrossed className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground" />
+            </div>
+          )}
+        </div>
+
         <div className="flex-1 min-w-0">
           {/* Day label */}
           <div className="flex items-center gap-2 mb-1">
@@ -46,7 +66,7 @@ export function AISuggestionCard({
           {/* Recipe title */}
           <h4
             className={`
-              font-medium leading-tight flex items-center gap-1.5
+              font-medium leading-tight flex items-center gap-1.5 md:text-lg
               ${isRejected ? 'line-through text-muted-foreground' : ''}
             `}
           >
@@ -80,7 +100,7 @@ export function AISuggestionCard({
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-start gap-1 shrink-0">
           {isPending && (
             <>
               <Button

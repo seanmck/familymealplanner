@@ -272,8 +272,8 @@ export function AIPlanModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
-        <DialogHeader className="flex flex-row items-center justify-between shrink-0">
+      <DialogContent className="max-w-lg md:max-w-xl lg:max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader className="flex flex-row items-center justify-between shrink-0 pr-8">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Suggested Meals
@@ -283,7 +283,7 @@ export function AIPlanModal({
               variant="ghost"
               size="sm"
               onClick={handleRedoAll}
-              className="gap-1.5 -mr-2"
+              className="gap-1.5"
             >
               <RefreshCw className="h-4 w-4" />
               Redo
