@@ -9,6 +9,7 @@ import { MealSlot } from '@/components/meal-slot'
 import { RecipePicker } from '@/components/recipe-picker'
 import { LunchboxPicker, type LunchboxItem, type FamilyMember, type LunchboxSuggestion } from '@/components/lunchbox-picker'
 import { PlannerSuggestions } from '@/components/planner-suggestions'
+import { AIPlanButton } from '@/components/ai-planner'
 import { CalendarEventBadge } from '@/components/calendar-event-badge'
 import { CalendarEventsDialog } from '@/components/calendar-events-dialog'
 import type { WeekCalendarData } from '@/lib/google-calendar'
@@ -466,6 +467,32 @@ export function WeekView({ recipes, familyMembers }: WeekViewProps) {
           </Button>
         )}
       </div>
+
+      {/* AI Plan Button - shown when there are empty dinner slots */}
+      {!isLoading && (
+        <div className="flex justify-center">
+          <AIPlanButton
+            weekStart={weekStart}
+            mealPlanId={mealPlan?.id || null}
+            existingMeals={
+              mealPlan?.plannedMeals
+                .filter((m) => m.mealType === 'DINNER' && !m.familyMemberId)
+                .map((m) => ({
+                  dayOfWeek: m.dayOfWeek,
+                  recipeId: m.recipes.find((r) => r.role === 'MAIN')?.recipe?.id,
+                  title:
+                    m.recipes.find((r) => r.role === 'MAIN')?.recipe?.title ||
+                    m.placeholderTitle ||
+                    'Planned meal',
+                })) || []
+            }
+            onSuggestionsAccepted={() => {
+              fetchMealPlan()
+              router.refresh()
+            }}
+          />
+        </div>
+      )}
 
       {/* Calendar Grid */}
       {isLoading ? (
