@@ -272,6 +272,8 @@ export async function GET(request: Request) {
     // Search web if enabled AND (user requested OR local recipes are sparse)
     const shouldSearchWeb = includeWebSearch && (userPrompt || topFavorites.length < MIN_RECIPES_FOR_VARIETY)
 
+    console.log('Web search decision:', { includeWebSearch, userPrompt: !!userPrompt, recipeCount: topFavorites.length, shouldSearchWeb })
+
     if (shouldSearchWeb) {
       // Build rich context for LLM query generation
       const queryContext: SearchQueryContext = {
