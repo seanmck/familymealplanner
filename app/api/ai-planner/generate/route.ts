@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getAuth } from '@/lib/api-auth'
 import { SYSTEM_PROMPT, buildUserPrompt, parseAIResponse } from '@/lib/ai-planner/prompt'
+import { fetchRecipeImage } from '@/lib/ai-planner/fetch-recipe-image'
 import type { GenerateRequest, GenerateResponse, AISuggestion } from '@/lib/ai-planner/types'
 
 const MAX_RETRIES = 1
@@ -145,14 +146,27 @@ export async function POST(request: Request) {
           return true
         })
 
-        // Enrich suggestions with image URLs (only for local recipes)
+        // Enrich suggestions with image URLs
         const recipeImageMap = new Map(
           availableRecipes.map((r) => [r.id, r.imageUrl])
         )
+
+        // Fetch images for web recipes in parallel
+        const webRecipes = suggestions.filter((s) => s.isWebRecipe)
+        const webImageResults = await Promise.all(
+          webRecipes.map(async (s) => ({
+            recipeId: s.recipeId,
+            imageUrl: await fetchRecipeImage(s.recipeId),
+          }))
+        )
+        const webImageMap = new Map(
+          webImageResults.map((r) => [r.recipeId, r.imageUrl])
+        )
+
         suggestions = suggestions.map((s) => ({
           ...s,
           imageUrl: s.isWebRecipe
-            ? null // Web recipe images will be fetched during import
+            ? webImageMap.get(s.recipeId) || null
             : recipeImageMap.get(s.recipeId) || null,
         }))
 
