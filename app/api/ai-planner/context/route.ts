@@ -270,47 +270,41 @@ export async function GET(request: Request) {
     const shouldSearchWeb = includeWebSearch && (userPrompt || topFavorites.length < MIN_RECIPES_FOR_VARIETY)
 
     if (shouldSearchWeb) {
-      // Check if API is configured
-      if (!process.env.GOOGLE_SEARCH_API_KEY || !process.env.GOOGLE_SEARCH_ENGINE_ID) {
-        console.log('Web search requested but Google API not configured')
-        webSearchStatus = 'not_configured'
-      } else {
-        const perishableNames = perishablesContext.map((p) => p.name)
-        const searchQueries = buildSearchQueries(perishableNames, preferredTags, userPrompt)
+      const perishableNames = perishablesContext.map((p) => p.name)
+      const searchQueries = buildSearchQueries(perishableNames, preferredTags, userPrompt)
 
-        console.log('Web search queries:', searchQueries)
+      console.log('Web search queries:', searchQueries)
 
-        // Run searches in parallel (limit to save API quota)
-        const searchPromises = searchQueries.slice(0, 2).map((q) => searchWebRecipes(q, 5))
-        const searchResults = await Promise.all(searchPromises)
+      // Run searches in parallel
+      const searchPromises = searchQueries.slice(0, 2).map((q) => searchWebRecipes(q, 5))
+      const searchResults = await Promise.all(searchPromises)
 
-        // Deduplicate by URL and collect results
-        const seenUrls = new Set<string>()
-        webRecipes = []
+      // Deduplicate by URL and collect results
+      const seenUrls = new Set<string>()
+      webRecipes = []
 
-        for (const result of searchResults) {
-          for (const recipe of result.results) {
-            if (!seenUrls.has(recipe.url)) {
-              seenUrls.add(recipe.url)
-              webRecipes.push({
-                url: recipe.url,
-                title: recipe.title,
-                snippet: recipe.snippet,
-                source: recipe.source,
-              })
-            }
+      for (const result of searchResults) {
+        for (const recipe of result.results) {
+          if (!seenUrls.has(recipe.url)) {
+            seenUrls.add(recipe.url)
+            webRecipes.push({
+              url: recipe.url,
+              title: recipe.title,
+              snippet: recipe.snippet,
+              source: recipe.source,
+            })
           }
         }
+      }
 
-        // Limit total web recipes
-        webRecipes = webRecipes.slice(0, 10)
-        console.log(`Web search found ${webRecipes.length} recipes`)
+      // Limit total web recipes
+      webRecipes = webRecipes.slice(0, 10)
+      console.log(`Web search found ${webRecipes.length} recipes`)
 
-        if (webRecipes.length > 0) {
-          webSearchStatus = 'success'
-        } else {
-          webSearchStatus = 'no_results'
-        }
+      if (webRecipes.length > 0) {
+        webSearchStatus = 'success'
+      } else {
+        webSearchStatus = 'no_results'
       }
     }
 
