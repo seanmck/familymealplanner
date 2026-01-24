@@ -14,7 +14,8 @@ Guidelines:
 - Consider the user's specific requests (easy meals on busy days, guests, etc.)
 - WEEKNIGHT RULE: Monday-Thursday meals should be quick and simple (under 30-40 min total). Save complex or time-intensive recipes for Friday-Sunday.
 - Keep reasons to 1-2 concise sentences explaining why this recipe fits
-- If WEB RECIPES are provided, you may suggest them when they're a better fit than available recipes (e.g., uses expiring ingredients, matches user request, adds variety)
+- If WEB RECIPES are provided and the user asks for something "new", "different", or to "try" something, you MUST include at least one web recipe in your suggestions
+- WEB RECIPES can also be suggested when they use expiring ingredients or add variety to the week
 
 Confidence levels:
 - "high": Recipe is a family favorite, uses expiring ingredients, or perfectly matches user request
