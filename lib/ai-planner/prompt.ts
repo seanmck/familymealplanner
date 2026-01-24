@@ -11,6 +11,7 @@ Guidelines:
 - Prioritize recipes that use expiring perishables
 - Balance variety across the week (don't suggest similar cuisines back-to-back)
 - Consider the user's specific requests (easy meals on busy days, guests, etc.)
+- WEEKNIGHT RULE: Monday-Thursday meals should be quick and simple (under 30-40 min total). Save complex or time-intensive recipes for Friday-Sunday.
 - Keep reasons to 1-2 concise sentences explaining why this recipe fits
 - If WEB RECIPES are provided, you may suggest them when they're a better fit than available recipes (e.g., uses expiring ingredients, matches user request, adds variety)
 
