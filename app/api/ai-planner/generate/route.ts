@@ -7,18 +7,6 @@ import type { GenerateRequest, GenerateResponse, AISuggestion } from '@/lib/ai-p
 const MAX_RETRIES = 1
 const MODEL = 'claude-haiku-4-5-20251001'
 
-// Recipe sites to allow for web search
-const RECIPE_DOMAINS = [
-  'allrecipes.com',
-  'seriouseats.com',
-  'budgetbytes.com',
-  'foodnetwork.com',
-  'bonappetit.com',
-  'epicurious.com',
-  'simplyrecipes.com',
-  'delish.com',
-  'cooking.nytimes.com',
-]
 
 export async function POST(request: Request) {
   try {
@@ -85,13 +73,13 @@ export async function POST(request: Request) {
 
     // Build tools array - include web search if enabled
     // Note: web_search_20250305 is a server-side tool type not fully typed in the SDK yet
+    // We don't restrict allowed_domains because many recipe sites block Anthropic's crawler
     const tools = enableWebSearch
       ? [
           {
             type: 'web_search_20250305' as const,
             name: 'web_search',
             max_uses: 3,
-            allowed_domains: RECIPE_DOMAINS,
           },
         ]
       : []
