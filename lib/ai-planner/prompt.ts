@@ -19,7 +19,6 @@ WEB SEARCH FOR NEW RECIPES:
 - If the user asks for something "new", "different", or to "try" something, you MUST use the web_search tool to find recipes
 - You can also search when their available recipes don't cover the request, or to find recipes that use expiring ingredients
 - When searching, look for specific single-recipe pages (not roundups or listicles like "25 best dinners")
-- Good recipe sites include: allrecipes.com, seriouseats.com, budgetbytes.com, foodnetwork.com, bonappetit.com, epicurious.com, simplyrecipes.com, delish.com, cooking.nytimes.com
 - For web recipes, use the full URL as the recipeId and set isWebRecipe: true
 
 Confidence levels:
