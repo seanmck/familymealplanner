@@ -35,7 +35,6 @@ export function AISuggestionCard({
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               {DAYS_OF_WEEK[suggestion.dayOfWeek]}
             </span>
-            <ConfidenceBadge confidence={suggestion.confidence} />
             {suggestion.isWebRecipe && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-blue-200">
                 <Globe className="h-2.5 w-2.5 mr-0.5" />
@@ -129,19 +128,5 @@ export function AISuggestionCard({
         </div>
       </div>
     </div>
-  )
-}
-
-function ConfidenceBadge({ confidence }: { confidence: 'high' | 'medium' | 'low' }) {
-  const colors = {
-    high: 'bg-green-100 text-green-700 border-green-200',
-    medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-    low: 'bg-orange-100 text-orange-700 border-orange-200',
-  }
-
-  return (
-    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 h-4 ${colors[confidence]}`}>
-      {confidence}
-    </Badge>
   )
 }
