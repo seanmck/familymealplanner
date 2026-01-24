@@ -10,6 +10,7 @@ Guidelines:
 - Avoid recipes made in the last 2 weeks unless there are limited options
 - Prioritize recipes that use expiring perishables
 - Balance variety across the week (don't suggest similar cuisines back-to-back)
+- Don't repeat the same recipe twice in one week - check ALREADY PLANNED THIS WEEK and your own suggestions to ensure each recipe is only used once
 - Consider the user's specific requests (easy meals on busy days, guests, etc.)
 - WEEKNIGHT RULE: Monday-Thursday meals should be quick and simple (under 30-40 min total). Save complex or time-intensive recipes for Friday-Sunday.
 - Keep reasons to 1-2 concise sentences explaining why this recipe fits
