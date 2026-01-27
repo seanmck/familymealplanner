@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { Trash2, ChevronDown, ChevronUp, Plus, Loader2, Sparkles, X } from 'lucide-react'
+import { Trash2, ChevronDown, ChevronUp, Plus, Loader2, Sparkles, X, Camera } from 'lucide-react'
 
 interface Perishable {
   id: string
@@ -123,6 +123,8 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
   const [isParsing, setIsParsing] = useState(false)
   const [parsedItems, setParsedItems] = useState<ParsedPerishable[] | null>(null)
   const [isAddingBulk, setIsAddingBulk] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleAdd = async (quickAddName?: string) => {
     const name = quickAddName || newName.trim()
@@ -324,6 +326,65 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
     }
   }
 
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Reset the input so the same file can be re-selected
+    e.target.value = ''
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Please use a smaller photo (max 5MB).')
+      return
+    }
+
+    // Read as base64
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      // dataUrl format: "data:image/jpeg;base64,/9j/4AAQ..."
+      const base64 = dataUrl.split(',')[1]
+      const mediaType = dataUrl.split(';')[0].split(':')[1]
+
+      setPhotoPreview(dataUrl)
+      setBulkAddOpen(true)
+      setIsParsing(true)
+
+      try {
+        const response = await fetch('/api/perishables/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64, mediaType }),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || 'Failed to identify items')
+        }
+
+        const { items } = await response.json()
+
+        const existingNames = new Set(perishables.map((p) => p.name.toLowerCase()))
+        const itemsWithSelection = items.map((item: ParsedPerishable) => ({
+          ...item,
+          selected: !existingNames.has(item.name.toLowerCase()),
+        }))
+
+        setParsedItems(itemsWithSelection)
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to identify items')
+      } finally {
+        setIsParsing(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   const toggleParsedItem = (index: number) => {
     if (!parsedItems) return
     setParsedItems(
@@ -394,6 +455,7 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
     setBulkAddOpen(false)
     setBulkText('')
     setParsedItems(null)
+    setPhotoPreview(null)
 
     if (addedCount > 0) {
       toast.success(`Added ${addedCount} item${addedCount !== 1 ? 's' : ''}${skippedCount > 0 ? ` (${skippedCount} skipped)` : ''}`)
@@ -406,6 +468,7 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
     setBulkAddOpen(false)
     setBulkText('')
     setParsedItems(null)
+    setPhotoPreview(null)
   }
 
   const availableSuggestions = COMMON_PERISHABLES.filter(
@@ -605,6 +668,23 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
               <Sparkles className="h-4 w-4 mr-1" />
               Add multiple items
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground"
+            >
+              <Camera className="h-4 w-4 mr-1" />
+              Snap a photo
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
           </div>
 
           {availableSuggestions.length > 0 && (
@@ -686,13 +766,31 @@ export function PerishablesList({ initialPerishables }: PerishablesListProps) {
       <Dialog open={bulkAddOpen} onOpenChange={(open) => !open && closeBulkAdd()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Multiple Items</DialogTitle>
+            <DialogTitle>
+              {photoPreview ? 'Photo Results' : 'Add Multiple Items'}
+            </DialogTitle>
             <DialogDescription>
-              Type or paste your items naturally. We&apos;ll figure out the details.
+              {photoPreview
+                ? 'We identified these items from your photo.'
+                : 'Type or paste your items naturally. We\'ll figure out the details.'}
             </DialogDescription>
           </DialogHeader>
 
-          {!parsedItems ? (
+          {isParsing && !parsedItems ? (
+            <div className="flex flex-col items-center gap-4 py-8">
+              {photoPreview && (
+                <img
+                  src={photoPreview}
+                  alt="Uploaded photo"
+                  className="max-h-[150px] rounded-lg object-cover"
+                />
+              )}
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                {photoPreview ? 'Identifying items...' : 'Parsing...'}
+              </div>
+            </div>
+          ) : !parsedItems ? (
             <>
               <Textarea
                 placeholder={`Example:
@@ -714,17 +812,8 @@ spinach (a bit wilty)`}
                   onClick={handleParse}
                   disabled={!bulkText.trim() || isParsing}
                 >
-                  {isParsing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Parsing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Parse Items
-                    </>
-                  )}
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Parse Items
                 </Button>
               </DialogFooter>
             </>
@@ -785,9 +874,9 @@ spinach (a bit wilty)`}
               <DialogFooter>
                 <Button
                   variant="outline"
-                  onClick={() => setParsedItems(null)}
+                  onClick={() => photoPreview ? closeBulkAdd() : setParsedItems(null)}
                 >
-                  Back
+                  {photoPreview ? 'Cancel' : 'Back'}
                 </Button>
                 <Button
                   onClick={handleAddBulk}

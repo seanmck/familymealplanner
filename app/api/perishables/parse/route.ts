@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 
 const MODEL = 'claude-haiku-4-5-20251001'
 
-const SYSTEM_PROMPT = `You are a helpful assistant that parses free-form text about perishable food items into structured data.
+const TEXT_SYSTEM_PROMPT = `You are a helpful assistant that parses free-form text about perishable food items into structured data.
 
 Given a list of perishable items (one per line or comma-separated), extract:
 - name: The item name (required)
@@ -28,6 +28,25 @@ Example output:
   { "name": "Ground Beef", "quantity": 2, "unit": "lbs" }
 ]`
 
+const IMAGE_SYSTEM_PROMPT = `You are a helpful assistant that identifies perishable food items from photos.
+
+Look at the photo and identify all visible perishable food items. For each item, extract:
+- name: The item name (required) - use common grocery names
+- quantity: Estimated count or amount if you can tell (optional)
+- unit: Unit of measurement if applicable (optional) - use standard units like "lbs", "oz", "count", "dozen", "cups", etc.
+- expirationDate: ISO date string if you can read a date label (optional)
+- notes: Any relevant observations like "opened", "half used", "looks wilty" (optional)
+
+Be practical - list items you can reasonably identify. Don't guess at items you can't see clearly.
+
+Respond ONLY with a JSON array of objects. No other text.
+Example output:
+[
+  { "name": "Milk", "quantity": 1, "notes": "gallon jug" },
+  { "name": "Eggs", "quantity": 1, "unit": "dozen" },
+  { "name": "Spinach", "notes": "bag, looks fresh" }
+]`
+
 export interface ParsedPerishable {
   name: string
   quantity?: number
@@ -35,6 +54,8 @@ export interface ParsedPerishable {
   expirationDate?: string
   notes?: string
 }
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export async function POST(request: Request) {
   try {
@@ -50,31 +71,65 @@ export async function POST(request: Request) {
       )
     }
 
-    const { text } = await request.json()
+    const body = await request.json()
+    const { text, image, mediaType } = body
 
-    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+    const hasText = text && typeof text === 'string' && text.trim().length > 0
+    const hasImage = image && typeof image === 'string' && mediaType
+
+    if (!hasText && !hasImage) {
       return NextResponse.json(
-        { error: 'Text is required' },
+        { error: 'Either text or image is required' },
         { status: 400 }
       )
     }
 
+    // Validate image size (base64 is ~33% larger than binary)
+    if (hasImage) {
+      const estimatedSize = (image.length * 3) / 4
+      if (estimatedSize > MAX_IMAGE_SIZE) {
+        return NextResponse.json(
+          { error: 'Image too large. Please use a smaller photo (max 5MB).' },
+          { status: 400 }
+        )
+      }
+    }
+
     const anthropic = new Anthropic()
-
     const today = new Date().toISOString().split('T')[0]
-    const userPrompt = `Today's date is ${today}.
 
-Parse these perishable items:
-${text.trim()}`
+    let content: Anthropic.MessageCreateParams['messages'][0]['content']
+    let systemPrompt: string
+
+    if (hasImage) {
+      systemPrompt = IMAGE_SYSTEM_PROMPT
+      content = [
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+            data: image,
+          },
+        },
+        {
+          type: 'text',
+          text: `Today's date is ${today}. Identify all perishable food items in this photo.`,
+        },
+      ]
+    } else {
+      systemPrompt = TEXT_SYSTEM_PROMPT
+      content = `Today's date is ${today}.\n\nParse these perishable items:\n${text.trim()}`
+    }
 
     const response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         {
           role: 'user',
-          content: userPrompt,
+          content,
         },
       ],
     })
