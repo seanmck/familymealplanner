@@ -32,10 +32,14 @@ else
 fi
 echo "✅ PostgreSQL is ready"
 
+# Set default database URLs for local dev if not already set
+export DATABASE_URL="${DATABASE_URL:-postgresql://familytable:familytable_dev@localhost:5434/familytable?schema=public}"
+export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+
 # Run Prisma migrations
 echo ""
 echo "🔄 Syncing database schema..."
-npx prisma db push --skip-generate
+npx prisma db push
 
 # Generate Prisma client
 echo ""
