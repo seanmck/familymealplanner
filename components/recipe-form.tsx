@@ -15,7 +15,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Link2, Loader2, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
+import { RecipeImportTabs } from '@/components/recipe-import-tabs'
+import type { ParsedRecipe } from '@/lib/recipe-parser'
 
 interface Ingredient {
   id?: string
@@ -62,8 +64,6 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
   )
   const [imageUrl, setImageUrl] = useState(recipe?.imageUrl || '')
   const [sourceUrl, setSourceUrl] = useState(recipe?.sourceUrl || '')
-  const [importUrl, setImportUrl] = useState('')
-  const [isImporting, setIsImporting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const addIngredient = () => {
@@ -82,52 +82,28 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
     )
   }
 
-  const handleImport = async () => {
-    if (!importUrl.trim()) return
+  const handleParsedRecipe = (data: ParsedRecipe) => {
+    // Populate form fields with parsed data
+    setTitle(data.title || '')
+    setDescription(data.description || '')
+    setPrepTime(data.prepTimeMinutes?.toString() || '')
+    setCookTime(data.cookTimeMinutes?.toString() || '')
+    setServings(data.servings?.toString() || '4')
+    setInstructions(data.instructions || '')
+    setTags(data.tags?.join(', ') || '')
+    setImageUrl(data.imageUrl || '')
+    setSourceUrl(data.sourceUrl || '')
 
-    setIsImporting(true)
-    try {
-      const response = await fetch('/api/recipes/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: importUrl }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to import recipe')
-      }
-
-      // Populate form fields with imported data
-      setTitle(data.title || '')
-      setDescription(data.description || '')
-      setPrepTime(data.prepTimeMinutes?.toString() || '')
-      setCookTime(data.cookTimeMinutes?.toString() || '')
-      setServings(data.servings?.toString() || '4')
-      setInstructions(data.instructions || '')
-      setTags(data.tags?.join(', ') || '')
-      setImageUrl(data.imageUrl || '')
-      setSourceUrl(data.sourceUrl || '')
-
-      // Map imported ingredients to our format
-      if (data.ingredients && data.ingredients.length > 0) {
-        setIngredients(
-          data.ingredients.map((ing: { name: string; quantity?: number | null; unit?: string | null; notes?: string | null }) => ({
-            name: ing.name,
-            quantity: ing.quantity ?? null,
-            unit: ing.unit || '',
-            notes: ing.notes || '',
-          }))
-        )
-      }
-
-      setImportUrl('')
-      toast.success('Recipe imported! Review the details and save when ready.')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to import recipe')
-    } finally {
-      setIsImporting(false)
+    // Map imported ingredients to our format
+    if (data.ingredients && data.ingredients.length > 0) {
+      setIngredients(
+        data.ingredients.map((ing) => ({
+          name: ing.name,
+          quantity: ing.quantity ?? null,
+          unit: ing.unit || '',
+          notes: ing.notes || '',
+        }))
+      )
     }
   }
 
@@ -188,51 +164,8 @@ export function RecipeForm({ recipe, defaultType = 'MAIN' }: RecipeFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Import from URL section - only show when creating new recipe */}
-      {!isEditing && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Link2 className="h-5 w-5" />
-              Import from URL
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <Input
-                value={importUrl}
-                onChange={(e) => setImportUrl(e.target.value)}
-                placeholder="https://www.allrecipes.com/recipe/..."
-                disabled={isImporting}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    handleImport()
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleImport}
-                disabled={isImporting || !importUrl.trim()}
-              >
-                {isImporting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing...
-                  </>
-                ) : (
-                  'Import'
-                )}
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-2">
-              Paste a recipe URL to auto-fill the form. Works with most recipe websites.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {/* Import section - only show when creating new recipe */}
+      {!isEditing && <RecipeImportTabs onParsed={handleParsedRecipe} />}
 
       {/* Imported recipe info (source URL and image preview) */}
       {(sourceUrl || imageUrl) && (
