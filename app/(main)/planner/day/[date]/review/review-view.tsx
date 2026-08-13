@@ -79,9 +79,10 @@ interface FamilyMember {
 interface ReviewViewProps {
   date: string
   familyMembers: FamilyMember[]
+  selfMemberId?: string | null
 }
 
-export function ReviewView({ date, familyMembers }: ReviewViewProps) {
+export function ReviewView({ date, familyMembers, selfMemberId }: ReviewViewProps) {
   const currentDate = parseDateString(date)!
   const dayOfWeek = getDayOfWeek(currentDate)
   const weekStart = getMonday(currentDate)
@@ -203,6 +204,7 @@ export function ReviewView({ date, familyMembers }: ReviewViewProps) {
               <DinnerReview
                 meal={dinnerMeal}
                 familyMembers={familyMembers}
+                selfMemberId={selfMemberId}
                 onUpdate={fetchMealPlan}
               />
             )}

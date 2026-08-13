@@ -4,6 +4,7 @@ import Google from 'next-auth/providers/google'
 import { PrismaAdapter } from '@auth/prisma-adapter'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { ensureSelfFamilyMember } from '@/lib/self-member'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -165,6 +166,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       await db.user.update({
         where: { id: user.id },
         data: { householdId: household.id },
+      })
+
+      // Give the owner a family member of their own so they can rate meals
+      await ensureSelfFamilyMember(db, {
+        userId: user.id,
+        householdId: household.id,
+        name: user.name,
+        email: user.email,
       })
 
       // Auto-connect calendar for new Google users

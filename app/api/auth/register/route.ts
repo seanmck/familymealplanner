@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db } from '@/lib/db'
+import { ensureSelfFamilyMember } from '@/lib/self-member'
 
 export async function POST(request: Request) {
   try {
@@ -46,6 +47,14 @@ export async function POST(request: Request) {
           name,
           householdId: household.id,
         },
+      })
+
+      // Give the owner a family member of their own so they can rate meals
+      await ensureSelfFamilyMember(tx, {
+        userId: user.id,
+        householdId: household.id,
+        name: user.name,
+        email: user.email,
       })
 
       return { user, household }

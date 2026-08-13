@@ -54,10 +54,11 @@ interface FamilyMember {
 interface DinnerReviewProps {
   meal: PlannedMeal
   familyMembers: FamilyMember[]
+  selfMemberId?: string | null
   onUpdate?: () => void
 }
 
-export function DinnerReview({ meal, familyMembers, onUpdate }: DinnerReviewProps) {
+export function DinnerReview({ meal, familyMembers, selfMemberId, onUpdate }: DinnerReviewProps) {
   const mainRecipe = meal.recipes.find((r) => r.role === 'MAIN')?.recipe
   const sideRecipes = meal.recipes.filter((r) => r.role === 'SIDE').map((r) => r.recipe)
 
@@ -163,6 +164,7 @@ export function DinnerReview({ meal, familyMembers, onUpdate }: DinnerReviewProp
             recipeId={mainRecipe.id}
             plannedMealId={meal.id}
             familyMembers={familyMembers}
+            selfMemberId={selfMemberId}
             existingRatings={mainRecipe.ratings}
             existingFeedback={meal.feedback}
             onUpdate={onUpdate}

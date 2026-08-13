@@ -26,5 +26,21 @@ export default async function ReviewPage({ params }: Props) {
     orderBy: [{ role: 'asc' }, { name: 'asc' }],
   })
 
-  return <ReviewView date={dateParam} familyMembers={familyMembers} />
+  // The signed-in user reviews their own dinner first, so put them on top
+  const selfMemberId =
+    familyMembers.find((member) => member.userId === session.user.id)?.id ?? null
+  const orderedMembers = selfMemberId
+    ? [
+        ...familyMembers.filter((member) => member.id === selfMemberId),
+        ...familyMembers.filter((member) => member.id !== selfMemberId),
+      ]
+    : familyMembers
+
+  return (
+    <ReviewView
+      date={dateParam}
+      familyMembers={orderedMembers}
+      selfMemberId={selfMemberId}
+    />
+  )
 }
