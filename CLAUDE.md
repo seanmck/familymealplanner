@@ -25,8 +25,9 @@ npm run db:push
 # Stop all services
 npm run stop
 
-# Linting
+# Linting and typechecking
 npm run lint
+npm run typecheck
 
 # MCP Server (in /mcp directory)
 cd mcp && npm run build  # Build MCP server
@@ -34,6 +35,12 @@ cd mcp && npm run dev    # Watch mode for development
 ```
 
 **Environment Setup**: Copy `.env.example` to `.env`. PostgreSQL runs on port 5434 (not default 5432).
+
+## Deployment
+
+Production is Railway at https://familytable.seanmckenna.app; pushing to `main` deploys. `railway.json` sets the builder and start command, `scripts/start.sh` applies migrations at boot (not at build — the build sandbox can't reach the private Postgres network), and `/api/health` gates the traffic swap. Full runbook in [docs/DEPLOY.md](docs/DEPLOY.md).
+
+Do not add `prisma migrate deploy` back into `npm run build`, and never run `prisma db push` against production — commit migration files instead.
 
 ## Architecture
 
