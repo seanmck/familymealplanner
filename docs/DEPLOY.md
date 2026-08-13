@@ -97,50 +97,47 @@ Check status with:
 railway domain status familytable.seanmckenna.app --service familytable
 ```
 
-## ⚠️ Auto-deploy is not yet armed
+## The deploy trigger
 
-Pushing to `main` does **not** currently deploy. Railway can build this repo
-because it is public, but push events need the Railway GitHub App installed on
-it — and it is currently only installed on `seanmck/counterweights`. Without
-that, Railway rejects the deployment trigger:
+Auto-deploy is armed: trigger `b96fd78c-5584-459f-932d-6edb1b84f05b` watches
+`main` on `seanmck/familymealplanner`.
 
+Note that the repo *source* and the *deployment trigger* are two separate
+things. `railway add --repo` sets only the source — enough for Railway to build
+the repo on demand, which is why the first deploy worked, but pushes are
+silently ignored until a trigger exists. If pushes ever stop deploying, check
+for the trigger before anything else:
+
+```bash
+railway api 'query { project(id: "187feb87-0daf-4161-8fd8-082724d6cf2a") {
+  deploymentTriggers { edges { node { id branch repository } } } } }'
 ```
-Cannot create deployment trigger for seanmck/familymealplanner
-because no one in the project has access to it
+
+If it is missing, recreate it:
+
+```bash
+railway api 'mutation { deploymentTriggerCreate(input: {
+  branch: "main",
+  environmentId: "7ddcbb9a-58aa-4ebb-98d7-f4846fde6d8c",
+  projectId: "187feb87-0daf-4161-8fd8-082724d6cf2a",
+  provider: "github",
+  repository: "seanmck/familymealplanner",
+  serviceId: "14dcf476-f4a4-4b4f-b96a-071660148cc2",
+  checkSuites: false
+}) { id branch } }'
 ```
 
-To finish wiring it up:
-
-1. Grant the app access to this repo at
-   <https://github.com/settings/installations> → **Railway** → *Repository
-   access* → add `familymealplanner`.
-2. Create the branch trigger:
-
-   ```bash
-   railway api 'mutation { deploymentTriggerCreate(input: {
-     branch: "main",
-     environmentId: "7ddcbb9a-58aa-4ebb-98d7-f4846fde6d8c",
-     projectId: "187feb87-0daf-4161-8fd8-082724d6cf2a",
-     provider: "github",
-     repository: "seanmck/familymealplanner",
-     serviceId: "14dcf476-f4a4-4b4f-b96a-071660148cc2",
-     checkSuites: false
-   }) { id branch } }'
-   ```
-
-3. Confirm it exists:
-
-   ```bash
-   railway api 'query { project(id: "187feb87-0daf-4161-8fd8-082724d6cf2a") {
-     deploymentTriggers { edges { node { id branch repository } } } } }'
-   ```
+Creating it requires the Railway GitHub App to have access to the repo
+(<https://github.com/settings/installations> → **Railway** → *Repository
+access*); otherwise the mutation fails with "no one in the project has access
+to it".
 
 `checkSuites: false` deliberately does **not** gate the deploy on GitHub checks.
 Gating there caused a recurring outage-by-stall in `counterweights`: a check
 suite that never resolves leaves Railway waiting forever and silently skips the
 deploy.
 
-Until step 1 is done, deploy manually from a clean checkout of `main`:
+To deploy without going through git — recovering from a bad push, say:
 
 ```bash
 railway up --service familytable
