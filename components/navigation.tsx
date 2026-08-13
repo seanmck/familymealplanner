@@ -119,6 +119,9 @@ export function Navigation() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-label={item.label}
+                title={item.label}
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'flex items-center justify-center rounded-lg p-2.5 transition-colors',
                   isActive
@@ -137,6 +140,9 @@ export function Navigation() {
             return (
               <Link
                 href={todayHref}
+                aria-label="Today"
+                title="Today"
+                aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'flex items-center justify-center rounded-lg p-2.5 transition-colors',
                   isActive

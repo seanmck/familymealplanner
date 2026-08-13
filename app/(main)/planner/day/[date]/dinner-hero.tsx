@@ -1,9 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,6 +114,9 @@ export function DinnerHero({
   onAddAlternate,
   onRemoveAlternate,
 }: DinnerHeroProps) {
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false)
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false)
+
   const mainRecipe = meal?.recipes?.find((r) => r.role === 'MAIN')?.recipe
   const sideRecipes = meal?.recipes?.filter((r) => r.role === 'SIDE') || []
   const hasContent = mainRecipe || meal?.placeholderTitle
@@ -133,26 +146,35 @@ export function DinnerHero({
       {hasContent ? (
         <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent overflow-hidden">
           <div className={`flex ${mainRecipe?.imageUrl ? 'flex-col md:flex-row' : ''}`}>
-            {/* Recipe Image */}
+            {/* Recipe Image - bleeds to the card edge past the card's py-6 */}
             {mainRecipe?.imageUrl && (
-              <div className="relative w-full md:w-64 lg:w-80 h-48 md:h-auto md:min-h-[200px] flex-shrink-0">
-                <Image
-                  src={mainRecipe.imageUrl}
-                  alt={mainRecipe.title}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 320px"
-                />
+              <div className="relative w-full md:w-64 lg:w-80 h-48 md:h-auto md:min-h-[200px] flex-shrink-0 -mt-6 md:-my-6">
+                <Link href={`/recipes/${mainRecipe.id}`} aria-label={`View ${mainRecipe.title}`}>
+                  <Image
+                    src={mainRecipe.imageUrl}
+                    alt={mainRecipe.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 320px"
+                  />
+                </Link>
               </div>
             )}
 
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1 flex-1">
+                {/* Actions are a sibling row on mobile so text gets the full column width */}
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-4">
+                  <div className="space-y-1 flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <CardTitle className="text-2xl">
-                        {mainRecipe?.title || meal?.placeholderTitle}
+                        {mainRecipe ? (
+                          <Link href={`/recipes/${mainRecipe.id}`} className="hover:underline">
+                            {mainRecipe.title}
+                          </Link>
+                        ) : (
+                          meal?.placeholderTitle
+                        )}
                       </CardTitle>
                       {isNew && (
                         <Badge className="gap-1 bg-accent text-accent-foreground">
@@ -174,7 +196,23 @@ export function DinnerHero({
                       )}
                     </div>
                     {mainRecipe?.description && (
-                      <p className="text-muted-foreground">{mainRecipe.description}</p>
+                      <div className="space-y-0.5">
+                        <p
+                          className={`text-sm text-muted-foreground ${
+                            descriptionExpanded ? '' : 'line-clamp-2'
+                          }`}
+                        >
+                          {mainRecipe.description}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setDescriptionExpanded((v) => !v)}
+                          className="text-sm font-medium text-primary hover:underline"
+                          aria-expanded={descriptionExpanded}
+                        >
+                          {descriptionExpanded ? 'Less' : 'More'}
+                        </button>
+                      </div>
                     )}
                     {mainRecipe?.sourceUrl && (
                       <a
@@ -190,16 +228,23 @@ export function DinnerHero({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={onEditClick}>
+                  <div className="flex items-center gap-2 md:flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={onEditClick}
+                      className="flex-1 md:flex-none"
+                    >
                       <Pencil className="h-4 w-4 mr-1" />
                       Change
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={onClear}
+                      className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => setConfirmClearOpen(true)}
+                      aria-label="Remove tonight's dinner"
+                      title="Remove tonight's dinner"
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -317,6 +362,7 @@ export function DinnerHero({
                       <button
                         onClick={() => onRemoveSide(side.recipe.id)}
                         className="ml-1 hover:bg-destructive/20 rounded p-0.5"
+                        aria-label={`Remove side: ${side.recipe.title}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -378,6 +424,7 @@ export function DinnerHero({
                             <button
                               onClick={() => onRemoveAlternate(altMeal.id)}
                               className="ml-1 hover:bg-destructive/20 rounded p-0.5"
+                              aria-label={`Remove alternate meal for ${altMeal.familyMember?.name || 'family member'}`}
                             >
                               <X className="h-3 w-3" />
                             </button>
@@ -416,6 +463,38 @@ export function DinnerHero({
           </CardContent>
         </Card>
       )}
+
+      {/* Confirm before clearing - this deletes the main, sides and alternates */}
+      <Dialog open={confirmClearOpen} onOpenChange={setConfirmClearOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remove tonight&apos;s dinner?</DialogTitle>
+            <DialogDescription>
+              This clears{' '}
+              {mainRecipe?.title || meal?.placeholderTitle || 'this meal'}
+              {sideRecipes.length > 0 &&
+                `, ${sideRecipes.length} side${sideRecipes.length === 1 ? '' : 's'}`}
+              {alternateMeals.length > 0 &&
+                `, and ${alternateMeals.length} alternate meal${alternateMeals.length === 1 ? '' : 's'}`}
+              . This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setConfirmClearOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                setConfirmClearOpen(false)
+                onClear()
+              }}
+            >
+              Remove dinner
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
