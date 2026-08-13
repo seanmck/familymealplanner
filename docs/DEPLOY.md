@@ -85,18 +85,66 @@ https://familytable.seanmckenna.app/api/auth/callback/google
 
 ## DNS
 
-The custom domain is registered with Railway but needs these records in the
-`seanmckenna.app` zone before TLS can be issued:
+Live and verified — the certificate is issued and the domain serves traffic.
 
-| Type    | Host                      | Value                                                                       |
-| ------- | ------------------------- | --------------------------------------------------------------------------- |
-| `CNAME` | `familytable`             | `jea9z4a1.up.railway.app`                                                    |
-| `TXT`   | `_railway-verify.familytable` | `railway-verify=af67e0a0248be5e0bbd0edf8c2db4db30d3091d718e4a603e9798100ae8a65b8` |
+| Type    | Host          | Value                    |
+| ------- | ------------- | ------------------------ |
+| `CNAME` | `familytable` | `jea9z4a1.up.railway.app` |
 
-If the domain sits behind Cloudflare, set the CNAME to **DNS only** (grey
-cloud) until Railway has issued the certificate, or ownership validation stalls.
+Check status with:
 
-Check progress with `railway domain --service familytable --json`.
+```bash
+railway domain status familytable.seanmckenna.app --service familytable
+```
+
+## ⚠️ Auto-deploy is not yet armed
+
+Pushing to `main` does **not** currently deploy. Railway can build this repo
+because it is public, but push events need the Railway GitHub App installed on
+it — and it is currently only installed on `seanmck/counterweights`. Without
+that, Railway rejects the deployment trigger:
+
+```
+Cannot create deployment trigger for seanmck/familymealplanner
+because no one in the project has access to it
+```
+
+To finish wiring it up:
+
+1. Grant the app access to this repo at
+   <https://github.com/settings/installations> → **Railway** → *Repository
+   access* → add `familymealplanner`.
+2. Create the branch trigger:
+
+   ```bash
+   railway api 'mutation { deploymentTriggerCreate(input: {
+     branch: "main",
+     environmentId: "7ddcbb9a-58aa-4ebb-98d7-f4846fde6d8c",
+     projectId: "187feb87-0daf-4161-8fd8-082724d6cf2a",
+     provider: "github",
+     repository: "seanmck/familymealplanner",
+     serviceId: "14dcf476-f4a4-4b4f-b96a-071660148cc2",
+     checkSuites: false
+   }) { id branch } }'
+   ```
+
+3. Confirm it exists:
+
+   ```bash
+   railway api 'query { project(id: "187feb87-0daf-4161-8fd8-082724d6cf2a") {
+     deploymentTriggers { edges { node { id branch repository } } } } }'
+   ```
+
+`checkSuites: false` deliberately does **not** gate the deploy on GitHub checks.
+Gating there caused a recurring outage-by-stall in `counterweights`: a check
+suite that never resolves leaves Railway waiting forever and silently skips the
+deploy.
+
+Until step 1 is done, deploy manually from a clean checkout of `main`:
+
+```bash
+railway up --service familytable
+```
 
 ## Common operations
 
