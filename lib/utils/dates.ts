@@ -93,3 +93,14 @@ export function formatDayDisplay(date: Date): string {
     day: 'numeric',
   })
 }
+
+/**
+ * Format date without the weekday: "January 15"
+ * Use when the weekday is already shown in an adjacent heading.
+ */
+export function formatMonthDay(date: Date): string {
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+  })
+}

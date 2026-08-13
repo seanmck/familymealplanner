@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { RecipePicker } from '@/components/recipe-picker'
 import { LunchboxPicker, type LunchboxItem, type FamilyMember, type LunchboxSuggestion } from '@/components/lunchbox-picker'
@@ -11,7 +12,7 @@ import { LunchGrid } from './lunch-grid'
 import {
   getMonday,
   getDayOfWeek,
-  formatDayDisplay,
+  formatMonthDay,
   formatDateString,
   parseDateString,
   addDays,
@@ -228,6 +229,7 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
       router.refresh()
     } catch (error) {
       console.error('Failed to remove side:', error)
+      toast.error('Could not remove that side. Please try again.')
     }
   }
 
@@ -235,13 +237,17 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
     const dinnerMeal = getDinnerMeal()
     if (!dinnerMeal) return
     try {
-      await fetch(`/api/planned-meals/${dinnerMeal.id}`, {
+      const response = await fetch(`/api/planned-meals/${dinnerMeal.id}`, {
         method: 'DELETE',
       })
+      if (!response.ok) {
+        throw new Error('Failed to clear meal')
+      }
       fetchMealPlan()
       router.refresh()
     } catch (error) {
       console.error('Failed to clear meal:', error)
+      toast.error('Could not remove that dinner. Please try again.')
     }
   }
 
@@ -287,13 +293,17 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
   // Handle removing an alternate dinner meal
   const handleRemoveAlternateDinner = async (mealId: string) => {
     try {
-      await fetch(`/api/planned-meals/${mealId}`, {
+      const response = await fetch(`/api/planned-meals/${mealId}`, {
         method: 'DELETE',
       })
+      if (!response.ok) {
+        throw new Error('Failed to remove alternate dinner')
+      }
       fetchMealPlan()
       router.refresh()
     } catch (error) {
       console.error('Failed to remove alternate dinner:', error)
+      toast.error('Could not remove that alternate meal. Please try again.')
     }
   }
 
@@ -332,7 +342,7 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
       router.refresh()
     } catch (error) {
       console.error('Failed to save meal:', error)
-      alert('Failed to save meal. Please try again.')
+      toast.error('Could not save that meal. Please try again.')
     }
   }
 
@@ -353,13 +363,14 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
   return (
     <div className="space-y-8">
       {/* Day Navigation Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-3">
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="icon"
             onClick={goToPrevDay}
             className="h-9 w-9 rounded-full"
+            aria-label="Previous day"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -374,7 +385,7 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
                 )}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {formatDayDisplay(currentDate)}
+                {formatMonthDay(currentDate)}
               </p>
             </div>
           </div>
@@ -384,6 +395,7 @@ export function DayView({ date, recipes, familyMembers }: DayViewProps) {
             size="icon"
             onClick={goToNextDay}
             className="h-9 w-9 rounded-full"
+            aria-label="Next day"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

@@ -8,7 +8,7 @@ import { LunchboxReview } from './lunchbox-review'
 import {
   getMonday,
   getDayOfWeek,
-  formatDayDisplay,
+  formatMonthDay,
   parseDateString,
   DAYS_OF_WEEK,
 } from '@/lib/utils/dates'
@@ -138,7 +138,7 @@ export function ReviewView({ date, familyMembers }: ReviewViewProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-y-3">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -146,7 +146,7 @@ export function ReviewView({ date, familyMembers }: ReviewViewProps) {
             asChild
             className="h-9 w-9 rounded-full"
           >
-            <Link href={`/planner/day/${date}`}>
+            <Link href={`/planner/day/${date}`} aria-label="Back to day">
               <ChevronLeft className="h-4 w-4" />
             </Link>
           </Button>
@@ -158,7 +158,7 @@ export function ReviewView({ date, familyMembers }: ReviewViewProps) {
                 Review {DAYS_OF_WEEK[dayOfWeek]}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {formatDayDisplay(currentDate)}
+                {formatMonthDay(currentDate)}
               </p>
             </div>
           </div>
