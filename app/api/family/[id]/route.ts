@@ -73,6 +73,14 @@ export async function DELETE(
       )
     }
 
+    // Your own member record is how you rate and review meals
+    if (existingMember.userId === session.user.id) {
+      return NextResponse.json(
+        { error: 'You cannot remove yourself from the household' },
+        { status: 400 }
+      )
+    }
+
     await db.familyMember.delete({
       where: { id },
     })

@@ -30,9 +30,10 @@ interface FamilyMember {
 
 interface FamilyMemberListProps {
   initialMembers: FamilyMember[]
+  selfMemberId?: string | null
 }
 
-export function FamilyMemberList({ initialMembers }: FamilyMemberListProps) {
+export function FamilyMemberList({ initialMembers, selfMemberId }: FamilyMemberListProps) {
   const router = useRouter()
   const [members, setMembers] = useState(initialMembers)
   const [newName, setNewName] = useState('')
@@ -202,6 +203,7 @@ export function FamilyMemberList({ initialMembers }: FamilyMemberListProps) {
                       <Badge variant={member.role === 'CHILD' ? 'secondary' : 'outline'}>
                         {member.role === 'CHILD' ? 'Child' : 'Adult'}
                       </Badge>
+                      {member.id === selfMemberId && <Badge>You</Badge>}
                     </div>
                     <div className="flex gap-2">
                       <Button
@@ -211,14 +213,17 @@ export function FamilyMemberList({ initialMembers }: FamilyMemberListProps) {
                       >
                         Edit
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(member.id)}
-                      >
-                        Remove
-                      </Button>
+                      {/* Removing yourself would drop you out of meal reviews */}
+                      {member.id !== selfMemberId && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(member.id)}
+                        >
+                          Remove
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}

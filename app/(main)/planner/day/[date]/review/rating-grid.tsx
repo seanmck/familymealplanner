@@ -30,6 +30,7 @@ interface RatingGridProps {
   recipeId: string
   plannedMealId: string
   familyMembers: FamilyMember[]
+  selfMemberId?: string | null
   existingRatings: Rating[]
   existingFeedback: MealFeedback[]
   onUpdate?: () => void
@@ -39,6 +40,7 @@ export function RatingGrid({
   recipeId,
   plannedMealId,
   familyMembers,
+  selfMemberId,
   existingRatings,
   existingFeedback,
   onUpdate,
@@ -164,15 +166,23 @@ export function RatingGrid({
         const currentRating = localRatings[member.id]
         const isSubmitting = submitting === member.id
         const feedback = feedbackState[member.id]
+        const isSelf = member.id === selfMemberId
 
         return (
           <div
             key={member.id}
-            className="flex items-center gap-3 p-3 rounded-lg bg-background border"
+            className={`flex items-center gap-3 p-3 rounded-lg bg-background border ${
+              isSelf ? 'border-primary/40 ring-1 ring-primary/20' : ''
+            }`}
           >
             {/* Name */}
             <div className="w-24 flex-shrink-0">
               <span className="font-medium text-sm">{member.name}</span>
+              {isSelf && (
+                <Badge variant="secondary" className="ml-1.5 text-[10px] py-0">
+                  You
+                </Badge>
+              )}
               {member.role === 'CHILD' && (
                 <Badge variant="outline" className="ml-1.5 text-[10px] py-0">
                   Kid

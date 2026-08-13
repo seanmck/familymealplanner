@@ -29,6 +29,9 @@ export default async function FamilySettingsPage() {
     }),
   ])
 
+  const selfMemberId =
+    members.find((member) => member.userId === session.user.id)?.id ?? null
+
   // Serialize dates for client component
   const serializedInvitations = invitations.map((inv) => ({
     ...inv,
@@ -51,7 +54,7 @@ export default async function FamilySettingsPage() {
       {/* Existing Family Members */}
       <div className="space-y-4">
         <h2 className="text-lg font-semibold">Current Members</h2>
-        <FamilyMemberList initialMembers={members} />
+        <FamilyMemberList initialMembers={members} selfMemberId={selfMemberId} />
       </div>
     </div>
   )
